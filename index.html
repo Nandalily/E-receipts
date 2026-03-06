@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Makerere SeventhDay Adventist Association — E-Receipting System</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1c473c;
+    --navy2: #1a574b;
+    --gold: #25684b;
+    --gold2: #e8b84b;
+    --cream: #f9f5ee;
+    --white: #ffffff;
+    --gray: #8a9bb0;
+    --light: #eef3f8;
+    --red: #c0392b;
+    --green: #1a7a4a;
+    --border: #d0dce8;
+    --shadow: 0 4px 24px rgba(13,33,55,0.10);
+    --radius: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--light);
+    color: var(--navy);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 60%, #254d72 100%);
+  }
+  .login-card {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 52px 44px 44px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    text-align: center;
+  }
+  .login-card .cross-icon {
+    width: 56px; height: 56px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 28px; color: var(--white);
+    box-shadow: 0 4px 16px rgba(200,151,42,0.4);
+  }
+  .login-card h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--navy);
+    line-height: 1.3;
+    margin-bottom: 6px;
+  }
+  .login-card .subtitle {
+    color: var(--gray);
+    font-size: 0.85rem;
+    margin-bottom: 32px;
+  }
+  .login-card input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    margin-bottom: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--cream);
+    color: var(--navy);
+  }
+  .login-card input:focus { border-color: var(--gold); background: var(--white); }
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: var(--gold);
+    color: var(--white);
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary:hover { background: var(--gold2); transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .login-error { color: var(--red); font-size: 0.85rem; margin-top: 10px; display: none; }
+
+  /* ── LAYOUT ── */
+  #app { display: none; flex-direction: row; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--navy);
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .sidebar-header .org-name {
+    font-family: 'Playfair Display', serif;
+    color: var(--white);
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+  .sidebar-header .org-sub {
+    color: var(--gold);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .nav-section { padding: 20px 16px 8px; }
+  .nav-label {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0 8px;
+    margin-bottom: 6px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    color: rgba(255,255,255,0.65);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: var(--white); }
+  .nav-item.active { background: var(--gold); color: var(--white); }
+  .nav-item .nav-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .user-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+  }
+  .user-avatar {
+    width: 34px; height: 34px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem; color: var(--white);
+    flex-shrink: 0;
+  }
+  .user-name { color: var(--white); font-size: 0.85rem; font-weight: 500; }
+  .btn-logout {
+    background: none; border: none; color: var(--gray); cursor: pointer;
+    font-size: 0.8rem; margin-top: 2px; text-align: left;
+  }
+  .btn-logout:hover { color: var(--red); }
+
+  /* ── MAIN ── */
+  #main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .page { display: none; flex-direction: column; flex: 1; }
+  .page.active { display: flex; }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--navy);
+  }
+  .page-date { color: var(--gray); font-size: 0.85rem; }
+  .page-body { padding: 32px 36px; flex: 1; }
+
+  /* ── STATS ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 18px;
+    margin-bottom: 32px;
+  }
+  .stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat-label { color: var(--gray); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .stat-value { font-size: 2rem; font-weight: 700; color: var(--navy); }
+  .stat-sub { color: var(--gold); font-size: 0.85rem; font-weight: 500; }
+
+  /* ── ENTRY FORM ── */
+  .form-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .form-card-header {
+    padding: 18px 28px;
+    background: var(--navy);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .form-card-header h2 { font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+  .receipt-count {
+    background: var(--gold);
+    color: var(--white);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .form-body { padding: 28px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--navy2);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .form-group input {
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--navy);
+    background: var(--cream);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .form-group input:focus { border-color: var(--gold); background: var(--white); }
+  .projects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .project-col { display: flex; flex-direction: column; }
+  .project-col:first-child { border-right: 1px solid var(--border); }
+  .project-col-header {
+    display: grid;
+    grid-template-columns: 1fr 130px;
+    background: var(--navy);
+    color: var(--white);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .project-col-header span { padding: 10px 14px; }
+  .project-col-header span:last-child { border-left: 1px solid rgba(255,255,255,0.15); text-align: right; }
+  .project-row {
+    display: grid;
+    grid-template-columns: 1fr 130px;
+    border-top: 1px solid var(--border);
+    align-items: center;
+  }
+  .project-name {
+    padding: 9px 14px;
+    font-size: 0.88rem;
+    color: var(--navy);
+    font-weight: 500;
+  }
+  .project-amount {
+    border-left: 1px solid var(--border);
+    padding: 4px 8px;
+  }
+  .project-amount input {
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--navy);
+    text-align: right;
+    outline: none;
+  }
+  .project-amount input:focus { background: #fffbf0; }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    background: var(--navy);
+    border-radius: 8px;
+    margin-bottom: 22px;
+    color: var(--white);
+  }
+  .total-row .label { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .total-row .amount { font-size: 1.3rem; font-weight: 700; color: var(--gold); font-family: 'Playfair Display', serif; }
+  .form-actions { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+  .btn-secondary {
+    padding: 11px 24px;
+    background: transparent;
+    color: var(--navy);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .btn-secondary:hover { border-color: var(--navy); background: var(--navy); color: var(--white); }
+  .btn-save {
+    padding: 11px 28px;
+    background: var(--green);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, transform 0.1s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn-save:hover { background: #1f9459; transform: translateY(-1px); }
+
+  /* ── RECENT ENTRIES TABLE ── */
+  .table-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-card-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .table-card-header h3 { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--navy); }
+  .search-input {
+    padding: 8px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+    background: var(--cream);
+  }
+  .search-input:focus { border-color: var(--gold); }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: var(--cream);
+    padding: 11px 16px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--navy2);
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 12px 16px;
+    font-size: 0.88rem;
+    color: var(--navy);
+    border-bottom: 1px solid var(--light);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fbff; }
+  .btn-del {
+    background: none; border: none;
+    color: var(--red); cursor: pointer; font-size: 1rem; padding: 2px 6px;
+    border-radius: 6px; transition: background 0.15s;
+  }
+  .btn-del:hover { background: #fde8e8; }
+
+  /* ── REPORTS PAGE ── */
+  .report-controls {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-end;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .report-controls .form-group { min-width: 160px; }
+  .btn-run {
+    padding: 11px 28px;
+    background: var(--navy);
+    color: var(--white);
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s;
+    white-space: nowrap;
+  }
+  .btn-run:hover { background: var(--navy2); }
+  .report-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+  .btn-action {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: var(--white);
+    color: var(--navy);
+    transition: all 0.18s;
+  }
+  .btn-action:hover { border-color: var(--navy); background: var(--navy); color: var(--white); }
+  .btn-action.gold { background: var(--gold); border-color: var(--gold); color: var(--white); }
+  .btn-action.gold:hover { background: var(--gold2); border-color: var(--gold2); }
+  .report-summary {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .report-summary .rs-info { color: var(--gray); font-size: 0.85rem; }
+  .report-summary .rs-total { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--navy); }
+  .report-summary .rs-total span { color: var(--gold); }
+
+  /* ── RECEIPT PRINT AREA ── */
+  #report-list { display: flex; flex-direction: column; gap: 20px; }
+  .receipt-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .receipt-card-header {
+    padding: 14px 20px;
+    background: var(--navy);
+    color: var(--white);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .receipt-card-header strong { font-family: 'Playfair Display', serif; font-size: 1rem; }
+  .receipt-inner { padding: 16px 20px; }
+  .receipt-meta { display: flex; gap: 24px; margin-bottom: 14px; flex-wrap: wrap; }
+  .receipt-meta span { font-size: 0.82rem; color: var(--gray); }
+  .receipt-meta span b { color: var(--navy); }
+  .receipt-projects {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.84rem;
+  }
+  .rp-col { }
+  .rp-col:first-child { border-right: 1px solid var(--border); }
+  .rp-header {
+    display: grid;
+    grid-template-columns: 1fr 100px;
+    background: var(--cream);
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--navy2);
+  }
+  .rp-header span { padding: 7px 12px; }
+  .rp-header span:last-child { border-left: 1px solid var(--border); text-align: right; }
+  .rp-row {
+    display: grid;
+    grid-template-columns: 1fr 100px;
+    border-top: 1px solid var(--light);
+  }
+  .rp-row span { padding: 6px 12px; color: var(--navy); }
+  .rp-row span:last-child { border-left: 1px solid var(--border); text-align: right; font-weight: 500; }
+  .rp-row.total-r {
+    background: var(--navy);
+    grid-column: 1 / -1;
+  }
+  .rp-row.total-r span { color: var(--white); font-weight: 700; }
+  .receipt-total {
+    margin-top: 12px;
+    text-align: right;
+    font-size: 0.88rem;
+    color: var(--gray);
+  }
+  .receipt-total strong { color: var(--navy); font-size: 1.05rem; }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray);
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+  .empty-state p { font-size: 1rem; }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--green);
+    color: var(--white);
+    padding: 13px 22px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(12px);
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.error { background: var(--red); }
+
+  /* ══ PRINT STYLES ══ */
+  @media print {
+    body { background: white !important; }
+    #login-screen { display: none !important; }
+    #sidebar { display: none !important; }
+    .page-header { display: none !important; }
+    .report-controls { display: none !important; }
+    .report-actions { display: none !important; }
+    .report-summary { box-shadow: none !important; border: 1px solid #ccc !important; }
+    #report-list .receipt-card { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+    .btn-del { display: none !important; }
+    .table-card { display: none !important; }
+    #page-entry { display: none !important; }
+    #page-dashboard { display: none !important; }
+
+    .print-header {
+      display: block !important;
+      text-align: center;
+      margin-bottom: 20px;
+      font-family: 'Playfair Display', serif;
+    }
+  }
+  .print-header { display: none; }
+
+  /* ── PROJECT TOTALS TABLE ── */
+  .totals-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 24px;
+    border: 2px solid var(--gold);
+  }
+  .totals-card-header {
+    background: var(--navy);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .totals-card-header h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .totals-card-header .totals-badge {
+    font-size: 0.78rem;
+    color: var(--gold);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .totals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .totals-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .totals-col:first-child { border-right: 1px solid var(--border); }
+  .totals-col-head {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--border);
+  }
+  .totals-col-head span {
+    padding: 9px 16px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--navy2);
+  }
+  .totals-col-head span:last-child {
+    border-left: 1px solid var(--border);
+    text-align: right;
+  }
+  .totals-row {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    border-bottom: 1px solid var(--light);
+    transition: background 0.12s;
+  }
+  .totals-row:last-child { border-bottom: none; }
+  .totals-row:hover { background: #f4f8ff; }
+  .totals-row span {
+    padding: 10px 16px;
+    font-size: 0.88rem;
+    color: var(--navy);
+  }
+  .totals-row span:first-child { font-weight: 500; }
+  .totals-row span:last-child {
+    border-left: 1px solid var(--border);
+    text-align: right;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .totals-row span:last-child.has-value { color: var(--green); }
+  .totals-footer {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 20px;
+    background: var(--navy);
+    border-top: 2px solid var(--gold);
+  }
+  .totals-footer .tf-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .totals-footer .tf-amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  /* print: keep totals table visible */
+  @media print {
+    .totals-card { border: 2px solid #999 !important; box-shadow: none !important; }
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="cross-icon">✝</div>
+    <h1>Makerere Seventhday<br>Adventist Association</h1>
+    <p class="subtitle">Receipt Management System</p>
+    <input type="text" id="login-user" placeholder="Username" autocomplete="off">
+    <input type="password" id="login-pass" placeholder="Password">
+    <button class="btn-primary" onclick="doLogin()">Sign In</button>
+    <p class="login-error" id="login-error">Invalid username or password.</p>
+    <p style="margin-top:18px;font-size:0.75rem;color:var(--gray);">Default: admin / admin123</p>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-header">
+      <div class="org-name">Makerere SeventhDay Adventist<br>Association</div>
+      <div class="org-sub">E-Receipts System</div>
+    </div>
+
+    <div class="nav-section">
+      <!-- <div class="nav-label">Main</div> -->
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">D</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('entry')" id="nav-entry">
+        <span class="nav-icon">E</span> New Entry
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Reports</div>
+      <div class="nav-item" onclick="showPage('reports')" id="nav-reports">
+        <span class="nav-icon">R</span> Run Reports
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div>
+          <div class="user-name" id="user-display">Admin</div>
+          <button class="btn-logout" onclick="doLogout()">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main id="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">MUSDAA TREASURY</div>
+          <div class="page-date" id="dash-date"></div>
+        </div>
+        <button class="btn-primary" style="width:auto;padding:10px 22px;" onclick="showPage('entry')">+ New Entry</button>
+      </div>
+      <div class="page-body">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Entries</div>
+            <div class="stat-value" id="stat-total">0</div>
+            <div class="stat-sub">All time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Today's Entries</div>
+            <div class="stat-value" id="stat-today">0</div>
+            <div class="stat-sub" id="stat-today-date"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Collected</div>
+            <div class="stat-value" id="stat-amount">0</div>
+            <div class="stat-sub">UGX all time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Today's Collection</div>
+            <div class="stat-value" id="stat-today-amount">0</div>
+            <div class="stat-sub">UGX today</div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>Recent Entries</h3>
+            <input class="search-input" placeholder=" Search name..." oninput="filterTable(this.value)">
+          </div>
+          <div style="overflow-x:auto;">
+            <table id="recent-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Treasurer</th>
+                  <th>Total (UGX)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="recent-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENTRY -->
+    <div class="page" id="page-entry">
+      <div class="page-header">
+        <div>
+          <div class="page-title">New Receipt Entry</div>
+          <div class="page-date">Fill in the details and save to proceed to next person</div>
+        </div>
+        <span class="receipt-count" id="entry-count-badge">0 saved today</span>
+      </div>
+      <div class="page-body">
+        <div class="form-card">
+          <div class="form-card-header">
+            <h2>Contributor Details</h2>
+          </div>
+          <div class="form-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="f-name" placeholder="e.g. John Mukasa" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="f-date">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Treasurer</label>
+                <input type="text" id="f-treasurer" placeholder="Treasurer name">
+              </div>
+            </div>
+
+            <div style="margin-bottom:10px;font-size:0.8rem;font-weight:600;color:var(--navy2);letter-spacing:0.05em;text-transform:uppercase;">Project Amounts (UGX)</div>
+            <div class="projects-grid">
+              <!-- LEFT COLUMN -->
+              <div class="project-col">
+                <div class="project-col-header">
+                  <span>Project</span><span>Amount</span>
+                </div>
+                <div class="project-row"><span class="project-name">Youth Summit</span><div class="project-amount"><input type="number" min="0" id="p-youth-summit" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Kayunga Project (SAHK)</span><div class="project-amount"><input type="number" min="0" id="p-kayunga" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Out Reach</span><div class="project-amount"><input type="number" min="0" id="p-outreach" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Maternity Center</span><div class="project-amount"><input type="number" min="0" id="p-maternity" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Note Books</span><div class="project-amount"><input type="number" min="0" id="p-notebooks" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Orientation</span><div class="project-amount"><input type="number" min="0" id="p-orientation" placeholder="0" oninput="calcTotal()"></div></div>
+              </div>
+              <!-- RIGHT COLUMN -->
+              <div class="project-col">
+                <div class="project-col-header">
+                  <span>Project</span><span>Amount</span>
+                </div>
+                <div class="project-row"><span class="project-name">Social Day</span><div class="project-amount"><input type="number" min="0" id="p-social" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Umbrellas</span><div class="project-amount"><input type="number" min="0" id="p-umbrellas" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Bibles</span><div class="project-amount"><input type="number" min="0" id="p-bibles" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name" style="color:var(--gray);font-style:italic;">—</span><div class="project-amount"><input type="number" min="0" id="p-extra1" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name" style="color:var(--gray);font-style:italic;">—</span><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name" style="color:var(--gray);font-style:italic;">—</span><div class="project-amount"><input type="number" min="0" id="p-extra3" placeholder="0" oninput="calcTotal()"></div></div>
+              </div>
+            </div>
+
+            <div class="total-row">
+              <div class="label">Total Amount</div>
+              <div class="amount" id="total-display">UGX 0</div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-secondary" onclick="clearForm()">Clear Form</button>
+              <button class="btn-save" onclick="saveEntry()">
+                <span>💾</span> Save &amp; Next Person
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Reports</div>
+          <div class="page-date">Generate and download receipt reports</div>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="report-controls">
+          <div class="form-group">
+            <label>Report Type</label>
+            <select id="report-type" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;" onchange="toggleDateInputs()">
+              <option value="day">Single Day</option>
+              <option value="range">Date Range</option>
+              <option value="all">All Records</option>
+            </select>
+          </div>
+          <div class="form-group" id="date-from-group">
+            <label>Date</label>
+            <input type="date" id="report-date-from" class="form-group input" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;">
+          </div>
+          <div class="form-group" id="date-to-group" style="display:none;">
+            <label>To Date</label>
+            <input type="date" id="report-date-to" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;">
+          </div>
+          <button class="btn-run" onclick="runReport()">▶ Run Report</button>
+        </div>
+
+        <div id="report-output" style="display:none;">
+          <div class="report-actions">
+            <button class="btn-action gold" onclick="window.print()">🖨️ Print / Save PDF</button>
+            <button class="btn-action" onclick="downloadCSV()">⬇️ Download CSV</button>
+          </div>
+
+          <div class="report-summary">
+            <div>
+              <div class="rs-info" id="report-meta-text">Showing 0 records</div>
+              <div class="rs-total">Grand Total: <span id="report-grand-total">UGX 0</span></div>
+            </div>
+            <div style="font-size:0.8rem;color:var(--gray);">Generated: <span id="report-generated-at"></span></div>
+          </div>
+
+          <!-- PROJECT TOTALS SUMMARY TABLE -->
+          <div class="totals-card">
+            <div class="totals-card-header">
+              <h3>&#128202; Project Totals Summary</h3>
+              <span class="totals-badge">Aggregated across all entries in this report</span>
+            </div>
+            <div class="totals-grid">
+              <div class="totals-col">
+                <div class="totals-col-head"><span>Project</span><span>Total (UGX)</span></div>
+                <div class="totals-row" id="tot-p-youth-summit"><span>Youth Summit</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-kayunga"><span>Kayunga Project (SAHK)</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-outreach"><span>Out Reach</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-maternity"><span>Maternity Center</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-notebooks"><span>Note Books</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-orientation"><span>Orientation</span><span>&#8212;</span></div>
+              </div>
+              <div class="totals-col">
+                <div class="totals-col-head"><span>Project</span><span>Total (UGX)</span></div>
+                <div class="totals-row" id="tot-p-social"><span>Social Day</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-umbrellas"><span>Umbrellas</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-bibles"><span>Bibles</span><span>&#8212;</span></div>
+                <div class="totals-row" style="opacity:0.3;"><span style="font-style:italic;color:var(--gray);">&#8212;</span><span>&#8212;</span></div>
+                <div class="totals-row" style="opacity:0.3;"><span style="font-style:italic;color:var(--gray);">&#8212;</span><span>&#8212;</span></div>
+                <div class="totals-row" style="opacity:0.3;"><span style="font-style:italic;color:var(--gray);">&#8212;</span><span>&#8212;</span></div>
+              </div>
+            </div>
+            <div class="totals-footer">
+              <div class="tf-label">Grand Total &#8212; All Projects Combined</div>
+              <div class="tf-amount" id="totals-grand">UGX 0</div>
+            </div>
+          </div>
+
+          <div class="print-header">
+            <h2 style="font-family:'Playfair Display',serif;font-size:1.4rem;">MAKERERE SEVENTHDAY ADVENTIST ASSOCIATION RECEIPTS</h2>
+            <p id="print-meta" style="font-size:0.9rem;color:#555;margin-top:6px;"></p>
+          </div>
+
+          <div id="report-list"></div>
+        </div>
+
+        <div id="report-empty" style="display:none;">
+          <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>No records found for the selected period.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════
+//  USERS (simple credential store)
+// ════════════════════════════════════════
+const USERS = {
+  admin: 'admin123',
+  treasurer: 'sda2024',
+  secretary: 'church123'
+};
+
+let currentUser = null;
+
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (USERS[u] && USERS[u] === p) {
+    currentUser = u;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('user-display').textContent = u.charAt(0).toUpperCase() + u.slice(1);
+    document.getElementById('user-avatar').textContent = u.charAt(0).toUpperCase();
+    document.getElementById('f-treasurer').value = u.charAt(0).toUpperCase() + u.slice(1);
+    initDB();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+// ════════════════════════════════════════
+//  INDEXEDDB
+// ════════════════════════════════════════
+let db;
+const DB_NAME = 'makerere_sda_db';
+const DB_VERSION = 1;
+const STORE = 'receipts';
+
+function initDB() {
+  const req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onupgradeneeded = e => {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains(STORE)) {
+      const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+      store.createIndex('date', 'date', { unique: false });
+      store.createIndex('name', 'name', { unique: false });
+    }
+  };
+  req.onsuccess = e => {
+    db = e.target.result;
+    setDefaults();
+    refreshDashboard();
+    refreshEntryBadge();
+  };
+  req.onerror = () => showToast('Database error. Please refresh.', true);
+}
+
+function dbAdd(record) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.add(record);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ════════════════════════════════════════
+//  NAV
+// ════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  if (id === 'dashboard') refreshDashboard();
+  if (id === 'entry') refreshEntryBadge();
+}
+
+// ════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════
+const PROJECTS = [
+  { id: 'p-youth-summit',  label: 'Youth Summit',         col: 0 },
+  { id: 'p-kayunga',       label: 'Kayunga Project(SAHK)',col: 0 },
+  { id: 'p-outreach',      label: 'Out Reach',            col: 0 },
+  { id: 'p-maternity',     label: 'Maternity Center',     col: 0 },
+  { id: 'p-notebooks',     label: 'Note Books',           col: 0 },
+  { id: 'p-orientation',   label: 'Orientation',          col: 0 },
+  { id: 'p-social',        label: 'Social Day',           col: 1 },
+  { id: 'p-umbrellas',     label: 'Umbrellas',            col: 1 },
+  { id: 'p-bibles',        label: 'Bibles',               col: 1 },
+];
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+function fmtNum(n) {
+  return Number(n || 0).toLocaleString();
+}
+
+function setDefaults() {
+  const today = todayStr();
+  document.getElementById('f-date').value = today;
+  document.getElementById('report-date-from').value = today;
+  document.getElementById('report-date-to').value = today;
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-UG', { weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  document.getElementById('stat-today-date').textContent = fmtDate(today);
+}
+
+function calcTotal() {
+  let total = 0;
+  PROJECTS.forEach(p => {
+    const v = parseFloat(document.getElementById(p.id).value) || 0;
+    total += v;
+  });
+  ['p-extra1','p-extra2','p-extra3'].forEach(id => {
+    total += parseFloat(document.getElementById(id).value) || 0;
+  });
+  document.getElementById('total-display').textContent = 'UGX ' + fmtNum(total);
+  return total;
+}
+
+function clearForm() {
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-date').value = todayStr();
+  PROJECTS.forEach(p => document.getElementById(p.id).value = '');
+  ['p-extra1','p-extra2','p-extra3'].forEach(id => document.getElementById(id).value = '');
+  calcTotal();
+  document.getElementById('f-name').focus();
+}
+
+// ════════════════════════════════════════
+//  SAVE ENTRY
+// ════════════════════════════════════════
+async function saveEntry() {
+  const name = document.getElementById('f-name').value.trim();
+  const date = document.getElementById('f-date').value;
+  if (!name) { showToast('Please enter a name.', true); document.getElementById('f-name').focus(); return; }
+  if (!date) { showToast('Please select a date.', true); return; }
+
+  const projects = {};
+  PROJECTS.forEach(p => {
+    projects[p.id] = parseFloat(document.getElementById(p.id).value) || 0;
+  });
+  const total = calcTotal();
+
+  const record = {
+    name,
+    date,
+    treasurer: document.getElementById('f-treasurer').value.trim(),
+    projects,
+    total,
+    savedAt: new Date().toISOString(),
+    savedBy: currentUser
+  };
+
+  try {
+    await dbAdd(record);
+    showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
+    clearForm();
+    refreshEntryBadge();
+  } catch (e) {
+    showToast('Error saving. Try again.', true);
+  }
+}
+
+async function refreshEntryBadge() {
+  const all = await dbGetAll();
+  const today = todayStr();
+  const todayCount = all.filter(r => r.date === today).length;
+  document.getElementById('entry-count-badge').textContent = todayCount + ' saved today';
+}
+
+// ════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════
+async function refreshDashboard() {
+  const all = await dbGetAll();
+  const today = todayStr();
+  const todayRec = all.filter(r => r.date === today);
+  const totalAmt = all.reduce((s, r) => s + (r.total || 0), 0);
+  const todayAmt = todayRec.reduce((s, r) => s + (r.total || 0), 0);
+
+  document.getElementById('stat-total').textContent = all.length;
+  document.getElementById('stat-today').textContent = todayRec.length;
+  document.getElementById('stat-amount').textContent = fmtNum(totalAmt);
+  document.getElementById('stat-today-amount').textContent = fmtNum(todayAmt);
+
+  const tbody = document.getElementById('recent-tbody');
+  const sorted = [...all].sort((a, b) => b.id - a.id).slice(0, 50);
+  tbody.innerHTML = sorted.length ? sorted.map((r, i) => `
+    <tr data-name="${r.name.toLowerCase()}">
+      <td>${r.id}</td>
+      <td><strong>${r.name}</strong></td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.treasurer || '—'}</td>
+      <td><strong>UGX ${fmtNum(r.total)}</strong></td>
+      <td><button class="btn-del" title="Delete" onclick="deleteEntry(${r.id})">🗑</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray);">No entries yet. Start by adding a new entry.</td></tr>';
+}
+
+function filterTable(q) {
+  document.querySelectorAll('#recent-tbody tr').forEach(row => {
+    const name = row.dataset.name || '';
+    row.style.display = name.includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  await dbDelete(id);
+  showToast('Entry deleted.');
+  refreshDashboard();
+  refreshEntryBadge();
+}
+
+// ════════════════════════════════════════
+//  REPORTS
+// ════════════════════════════════════════
+function toggleDateInputs() {
+  const type = document.getElementById('report-type').value;
+  document.getElementById('date-from-group').style.display = type === 'all' ? 'none' : '';
+  document.getElementById('date-to-group').style.display = type === 'range' ? '' : 'none';
+  if (type === 'day') document.querySelector('#date-from-group label').textContent = 'Date';
+  if (type === 'range') document.querySelector('#date-from-group label').textContent = 'From Date';
+}
+
+let currentReportData = [];
+
+async function runReport() {
+  const type = document.getElementById('report-type').value;
+  const from = document.getElementById('report-date-from').value;
+  const to = document.getElementById('report-date-to').value;
+
+  const all = await dbGetAll();
+  let filtered = all;
+
+  if (type === 'day') filtered = all.filter(r => r.date === from);
+  else if (type === 'range') filtered = all.filter(r => r.date >= from && r.date <= to);
+
+  currentReportData = filtered;
+
+  document.getElementById('report-output').style.display = filtered.length ? 'block' : 'none';
+  document.getElementById('report-empty').style.display = filtered.length ? 'none' : 'block';
+
+  if (!filtered.length) return;
+
+  const grandTotal = filtered.reduce((s, r) => s + (r.total || 0), 0);
+  let metaText = `${filtered.length} record(s)`;
+  if (type === 'day') metaText += ` · ${fmtDate(from)}`;
+  else if (type === 'range') metaText += ` · ${fmtDate(from)} to ${fmtDate(to)}`;
+  else metaText += ' · All records';
+
+  document.getElementById('report-meta-text').textContent = metaText;
+  document.getElementById('report-grand-total').textContent = 'UGX ' + fmtNum(grandTotal);
+  document.getElementById('report-generated-at').textContent = new Date().toLocaleString();
+  document.getElementById('print-meta').textContent = metaText + ' · Grand Total: UGX ' + fmtNum(grandTotal);
+
+  // ── Build project totals ──
+  const projTotals = {};
+  PROJECTS.forEach(p => { projTotals[p.id] = 0; });
+  filtered.forEach(r => {
+    PROJECTS.forEach(p => {
+      projTotals[p.id] += (r.projects?.[p.id] || 0);
+    });
+  });
+  let projGrand = 0;
+  PROJECTS.forEach(p => {
+    const val = projTotals[p.id];
+    projGrand += val;
+    const row = document.getElementById('tot-' + p.id);
+    if (row) {
+      const cell = row.querySelector('span:last-child');
+      if (val > 0) {
+        cell.textContent = fmtNum(val);
+        cell.classList.add('has-value');
+      } else {
+        cell.textContent = '—';
+        cell.classList.remove('has-value');
+      }
+    }
+  });
+  document.getElementById('totals-grand').textContent = 'UGX ' + fmtNum(projGrand);
+
+  const sorted = [...filtered].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  const list = document.getElementById('report-list');
+
+  list.innerHTML = sorted.map(r => {
+    const leftProjects = PROJECTS.filter(p => p.col === 0);
+    const rightProjects = PROJECTS.filter(p => p.col === 1);
+    const maxRows = Math.max(leftProjects.length, rightProjects.length);
+
+    const leftRows = leftProjects.map(p => {
+      const amt = r.projects?.[p.id] || 0;
+      return `<div class="rp-row"><span>${p.label}</span><span>${amt ? fmtNum(amt) : ''}</span></div>`;
+    }).join('');
+
+    const rightRows = rightProjects.map(p => {
+      const amt = r.projects?.[p.id] || 0;
+      return `<div class="rp-row"><span>${p.label}</span><span>${amt ? fmtNum(amt) : ''}</span></div>`;
+    }).join('');
+
+    return `
+    <div class="receipt-card">
+      <div class="receipt-card-header">
+        <strong>${r.name}</strong>
+        <span>Receipt #${r.id} · ${fmtDate(r.date)}</span>
+      </div>
+      <div class="receipt-inner">
+        <div class="receipt-meta">
+          <span>Name: <b>${r.name}</b></span>
+          <span>Date: <b>${fmtDate(r.date)}</b></span>
+          <span>Treasurer: <b>${r.treasurer || '—'}</b></span>
+        </div>
+        <div class="receipt-projects">
+          <div class="rp-col">
+            <div class="rp-header"><span>PROJECT</span><span>AMOUNT</span></div>
+            ${leftRows}
+          </div>
+          <div class="rp-col">
+            <div class="rp-header"><span>PROJECT</span><span>AMOUNT</span></div>
+            ${rightRows}
+          </div>
+        </div>
+        <div class="receipt-total">TOTAL: <strong>UGX ${fmtNum(r.total)}</strong></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+//  CSV DOWNLOAD
+// ════════════════════════════════════════
+function downloadCSV() {
+  if (!currentReportData.length) return;
+  const headers = ['ID', 'Name', 'Date', 'Treasurer', ...PROJECTS.map(p => p.label), 'Total'];
+  const rows = currentReportData.map(r => [
+    r.id, r.name, r.date, r.treasurer || '',
+    ...PROJECTS.map(p => r.projects?.[p.id] || 0),
+    r.total
+  ]);
+  const csv = [headers, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `makerere_sda_receipts_${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 3200);
+}
+</script>
+</body>
+</html>
