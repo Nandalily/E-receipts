@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Makerere SeventhDay Adventist Association — E-Receipting System</title>
+<title>MUSDAA — E-Receipting System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root {
     --navy: #1c473c;
@@ -431,6 +433,27 @@
     border-radius: 6px; transition: background 0.15s;
   }
   .btn-del:hover { background: #fde8e8; }
+  .receipt-card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-inline {
+    padding: 7px 12px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .btn-inline.email { background: #2d6cdf; color: var(--white); }
+  .btn-inline.email:hover { background: #2457b7; }
+  .btn-inline.server { background: #1a7a4a; color: var(--white); }
+  .btn-inline.server:hover { background: #155f3b; }
 
   /* ── REPORTS PAGE ── */
   .report-controls {
@@ -460,6 +483,44 @@
   }
   .btn-run:hover { background: var(--navy2); }
   .report-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+  .delivery-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 28px;
+    margin-bottom: 24px;
+    border-left: 4px solid var(--gold);
+  }
+  .delivery-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+  .delivery-card p {
+    color: var(--gray);
+    font-size: 0.86rem;
+    margin-bottom: 18px;
+  }
+  .delivery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .delivery-card input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.93rem;
+    background: var(--cream);
+    color: var(--navy);
+    outline: none;
+  }
+  .delivery-card input:focus { border-color: var(--gold); background: var(--white); }
+  .delivery-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .btn-action {
     display: flex; align-items: center; gap: 7px;
     padding: 10px 20px;
@@ -524,7 +585,6 @@
     overflow: hidden;
     font-size: 0.84rem;
   }
-  .rp-col { }
   .rp-col:first-child { border-right: 1px solid var(--border); }
   .rp-header {
     display: grid;
@@ -730,14 +790,14 @@
 <!-- ══ LOGIN ══ -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="cross-icon">✝</div>
+    <div class="cross-icon">MUSDAA</div>
     <h1>Makerere Seventhday<br>Adventist Association</h1>
-    <p class="subtitle">Receipt Management System</p>
+    <p class="subtitle">RMS</p>
     <input type="text" id="login-user" placeholder="Username" autocomplete="off">
     <input type="password" id="login-pass" placeholder="Password">
     <button class="btn-primary" onclick="doLogin()">Sign In</button>
-    <p class="login-error" id="login-error">Invalid username or password.</p>
-    <p style="margin-top:18px;font-size:0.75rem;color:var(--gray);">Default: admin / admin123</p>
+    <p class="login-error" id="login-error">Invalid Credentials</p>
+    <!-- <p style="margin-top:18px;font-size:0.75rem;color:var(--gray);">Default: admin / admin123</p> -->
   </div>
 </div>
 
@@ -827,8 +887,9 @@
                   <th>Name</th>
                   <th>Date</th>
                   <th>Treasurer</th>
+                  <th>Email</th>
                   <th>Total (UGX)</th>
-                  <th></th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="recent-tbody"></tbody>
@@ -856,7 +917,8 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Full Name *</label>
-                <input type="text" id="f-name" placeholder="e.g. John Mukasa" autocomplete="off">
+                <input type="text" id="f-name" list="persons-list" placeholder="e.g. John Mukasa" autocomplete="off">
+                <datalist id="persons-list"></datalist>
               </div>
               <div class="form-group">
                 <label>Date</label>
@@ -867,6 +929,10 @@
               <div class="form-group">
                 <label>Treasurer</label>
                 <input type="text" id="f-treasurer" placeholder="Treasurer name">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="f-email" placeholder="person@example.com" autocomplete="email">
               </div>
             </div>
 
@@ -892,9 +958,9 @@
                 <div class="project-row"><span class="project-name">Social Day</span><div class="project-amount"><input type="number" min="0" id="p-social" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Umbrellas</span><div class="project-amount"><input type="number" min="0" id="p-umbrellas" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Bibles</span><div class="project-amount"><input type="number" min="0" id="p-bibles" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><span class="project-name" style="color:var(--gray);font-style:italic;">—</span><div class="project-amount"><input type="number" min="0" id="p-extra1" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><span class="project-name" style="color:var(--gray);font-style:italic;">—</span><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><span class="project-name" style="color:var(--gray);font-style:italic;">—</span><div class="project-amount"><input type="number" min="0" id="p-extra3" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><input class="project-name-input" id="p-extra1-label" placeholder="Label for extra item 1" oninput="saveExtraLabels()" value="Extra Item 1"><div class="project-amount"><input type="number" min="0" id="p-extra1" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><input class="project-name-input" id="p-extra2-label" placeholder="Label for extra item 2" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><input class="project-name-input" id="p-extra3-label" placeholder="Label for extra item 3" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra3" placeholder="0" oninput="calcTotal()"></div></div>
               </div>
             </div>
 
@@ -905,8 +971,8 @@
 
             <div class="form-actions">
               <button class="btn-secondary" onclick="clearForm()">Clear Form</button>
-              <button class="btn-save" onclick="saveEntry()">
-                <span>💾</span> Save &amp; Next Person
+              <button class="btn-save" id="save-entry-btn" onclick="saveEntry()">
+                <span>..</span> Save &amp; Next Person
               </button>
             </div>
           </div>
@@ -923,6 +989,20 @@
         </div>
       </div>
       <div class="page-body">
+        <div class="delivery-card">
+          <h3>Email Delivery Setup</h3>
+          <p>Enter your EmailJS credentials once so receipts can be delivered directly to the recipient instead of opening a draft.</p>
+          <div class="delivery-grid">
+            <input type="text" id="emailjs-service-id" placeholder="EmailJS Service ID">
+            <input type="text" id="emailjs-template-id" placeholder="EmailJS Template ID">
+            <input type="text" id="emailjs-public-key" placeholder="EmailJS Public Key">
+          </div>
+          <div class="delivery-actions">
+            <button class="btn-action gold" onclick="saveEmailDeliverySettings()">Save Email Settings</button>
+            <button class="btn-action" onclick="clearEmailDeliverySettings()">Clear Settings</button>
+          </div>
+        </div>
+
         <div class="report-controls">
           <div class="form-group">
             <label>Report Type</label>
@@ -943,10 +1023,26 @@
           <button class="btn-run" onclick="runReport()">▶ Run Report</button>
         </div>
 
+        <div class="report-controls" style="margin-top:14px;">
+          <div class="form-group">
+            <label>Analytics: Person</label>
+            <input type="text" id="analytics-person" list="persons-list" placeholder="Type name to analyze">
+          </div>
+          <div class="form-group">
+            <label>From</label>
+            <input type="date" id="analytics-from" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--cream);">
+          </div>
+          <div class="form-group">
+            <label>To</label>
+            <input type="date" id="analytics-to" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--cream);">
+          </div>
+          <button class="btn-run" onclick="runAnalytics()">Run Analytics</button>
+        </div>
+
         <div id="report-output" style="display:none;">
           <div class="report-actions">
-            <button class="btn-action gold" onclick="window.print()">🖨️ Print / Save PDF</button>
-            <button class="btn-action" onclick="downloadCSV()">⬇️ Download CSV</button>
+            <button class="btn-action gold" onclick="window.print()"> Print / Save PDF</button>
+            <button class="btn-action" onclick="downloadCSV()">⬇Download CSV</button>
           </div>
 
           <div class="report-summary">
@@ -997,9 +1093,31 @@
           <div id="report-list"></div>
         </div>
 
+        <div id="analytics-output" style="display:none;margin-top:18px;">
+          <div class="report-summary">
+            <div>
+              <div class="rs-info" id="analytics-meta">Analytics results</div>
+            </div>
+            <div style="font-size:0.8rem;color:var(--gray);" id="analytics-generated">Generated: <span></span></div>
+          </div>
+
+          <div class="table-card" style="padding:18px;">
+            <div id="analytics-person-summary" style="margin-bottom:12px;"></div>
+            <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+              <div id="analytics-projects" style="flex:1;min-width:260px;"></div>
+              <div style="width:420px;max-width:48%;">
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+                  <button class="btn-action" onclick="downloadAnalyticsCSV()">⬇ Export CSV</button>
+                </div>
+                <canvas id="analytics-chart" width="420" height="260"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div id="report-empty" style="display:none;">
           <div class="empty-state">
-            <div class="icon">📭</div>
+            <div class="icon"></div>
             <p>No records found for the selected period.</p>
           </div>
         </div>
@@ -1022,6 +1140,115 @@ const USERS = {
 };
 
 let currentUser = null;
+let editingEntryId = null;
+const EMAIL_SETTINGS_KEY = 'receipt_email_delivery_settings';
+const PERSONS_KEY = 'receipt_persons';
+const EXTRA_LABELS_KEY = 'receipt_extra_labels';
+
+function loadPersons() {
+  try {
+    const raw = localStorage.getItem(PERSONS_KEY) || '{}';
+    const obj = JSON.parse(raw);
+    updatePersonsDatalist(obj);
+    return obj;
+  } catch (e) {
+    return {};
+  }
+}
+
+function loadExtraLabels() {
+  try {
+    const raw = localStorage.getItem(EXTRA_LABELS_KEY) || '{}';
+    const obj = JSON.parse(raw);
+    // set inputs if present
+    document.getElementById('p-extra1-label').value = obj['p-extra1'] || 'Extra Item 1';
+    document.getElementById('p-extra2-label').value = obj['p-extra2'] || '';
+    document.getElementById('p-extra3-label').value = obj['p-extra3'] || '';
+    return obj;
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveExtraLabels() {
+  const obj = {
+    'p-extra1': document.getElementById('p-extra1-label').value.trim() || 'Extra Item 1',
+    'p-extra2': document.getElementById('p-extra2-label').value.trim() || '',
+    'p-extra3': document.getElementById('p-extra3-label').value.trim() || ''
+  };
+  localStorage.setItem(EXTRA_LABELS_KEY, JSON.stringify(obj));
+  return obj;
+}
+
+function savePerson(name, email) {
+  if (!name) return;
+  const obj = loadPersons();
+  if (email) obj[name] = email;
+  else if (!obj[name]) obj[name] = '';
+  localStorage.setItem(PERSONS_KEY, JSON.stringify(obj));
+  updatePersonsDatalist(obj);
+}
+
+function getPersonByName(name) {
+  const obj = loadPersons();
+  return obj[name] || null;
+}
+
+function updatePersonsDatalist(obj) {
+  const list = document.getElementById('persons-list');
+  if (!list) return;
+  list.innerHTML = '';
+  Object.keys(obj || {}).forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n;
+    list.appendChild(opt);
+  });
+}
+
+function getEmailDeliverySettings() {
+  try {
+    return JSON.parse(localStorage.getItem(EMAIL_SETTINGS_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+function loadEmailDeliverySettings() {
+  const settings = getEmailDeliverySettings();
+  document.getElementById('emailjs-service-id').value = settings.serviceId || '';
+  document.getElementById('emailjs-template-id').value = settings.templateId || '';
+  document.getElementById('emailjs-public-key').value = settings.publicKey || '';
+}
+
+function applyEmailDeliverySettings() {
+  const settings = getEmailDeliverySettings();
+  if (!settings.publicKey || typeof emailjs === 'undefined') return false;
+  emailjs.init({ publicKey: settings.publicKey });
+  return true;
+}
+
+function saveEmailDeliverySettings() {
+  const settings = {
+    serviceId: document.getElementById('emailjs-service-id').value.trim(),
+    templateId: document.getElementById('emailjs-template-id').value.trim(),
+    publicKey: document.getElementById('emailjs-public-key').value.trim()
+  };
+
+  if (!settings.serviceId || !settings.templateId || !settings.publicKey) {
+    showToast('Fill in all EmailJS settings first.', true);
+    return;
+  }
+
+  localStorage.setItem(EMAIL_SETTINGS_KEY, JSON.stringify(settings));
+  applyEmailDeliverySettings();
+  showToast('Email delivery settings saved.');
+}
+
+function clearEmailDeliverySettings() {
+  localStorage.removeItem(EMAIL_SETTINGS_KEY);
+  loadEmailDeliverySettings();
+  showToast('Email delivery settings cleared.');
+}
 
 function doLogin() {
   const u = document.getElementById('login-user').value.trim();
@@ -1071,15 +1298,30 @@ function initDB() {
   };
   req.onsuccess = e => {
     db = e.target.result;
+    loadEmailDeliverySettings();
+    applyEmailDeliverySettings();
     setDefaults();
     refreshDashboard();
     refreshEntryBadge();
+    // load saved persons for autofill
+    loadPersons();
+    // load editable extra labels
+    loadExtraLabels();
+    const nameInput = document.getElementById('f-name');
+    if (nameInput) {
+      nameInput.addEventListener('input', e => {
+        const val = e.target.value.trim();
+        const email = getPersonByName(val);
+        if (email !== null && email !== undefined) document.getElementById('f-email').value = email;
+      });
+    }
   };
   req.onerror = () => showToast('Database error. Please refresh.', true);
 }
 
 function dbAdd(record) {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     const tx = db.transaction(STORE, 'readwrite');
     const store = tx.objectStore(STORE);
     const req = store.add(record);
@@ -1090,9 +1332,32 @@ function dbAdd(record) {
 
 function dbGetAll() {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
     const tx = db.transaction(STORE, 'readonly');
     const store = tx.objectStore(STORE);
     const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetById(id) {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.get(Number(id));
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbPut(record) {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.put(record);
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -1172,11 +1437,46 @@ function calcTotal() {
 }
 
 function clearForm() {
+  editingEntryId = null;
   document.getElementById('f-name').value = '';
   document.getElementById('f-date').value = todayStr();
+  document.getElementById('f-email').value = '';
   PROJECTS.forEach(p => document.getElementById(p.id).value = '');
   ['p-extra1','p-extra2','p-extra3'].forEach(id => document.getElementById(id).value = '');
   calcTotal();
+  updateEntryFormMode();
+  document.getElementById('f-name').focus();
+}
+
+function updateEntryFormMode() {
+  const button = document.getElementById('save-entry-btn');
+  if (!button) return;
+  button.innerHTML = editingEntryId ? '<span>..</span> Update Entry' : '<span>💾</span> Save &amp; Next Person';
+}
+
+async function loadEntryForEdit(id) {
+  const record = await dbGetById(id);
+  if (!record) {
+    showToast('Receipt not found.', true);
+    return;
+  }
+
+  editingEntryId = record.id;
+  document.getElementById('f-name').value = record.name || '';
+  document.getElementById('f-date').value = record.date || todayStr();
+  document.getElementById('f-treasurer').value = record.treasurer || '';
+  document.getElementById('f-email').value = record.email || '';
+
+  PROJECTS.forEach(p => {
+    document.getElementById(p.id).value = record.projects?.[p.id] || '';
+  });
+  ['p-extra1','p-extra2','p-extra3'].forEach(id => {
+    document.getElementById(id).value = record.projects?.[id] || '';
+  });
+
+  calcTotal();
+  updateEntryFormMode();
+  showPage('entry');
   document.getElementById('f-name').focus();
 }
 
@@ -1186,8 +1486,14 @@ function clearForm() {
 async function saveEntry() {
   const name = document.getElementById('f-name').value.trim();
   const date = document.getElementById('f-date').value;
+  const email = document.getElementById('f-email').value.trim();
   if (!name) { showToast('Please enter a name.', true); document.getElementById('f-name').focus(); return; }
   if (!date) { showToast('Please select a date.', true); return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showToast('Please enter a valid email address.', true);
+    document.getElementById('f-email').focus();
+    return;
+  }
 
   const projects = {};
   PROJECTS.forEach(p => {
@@ -1195,23 +1501,48 @@ async function saveEntry() {
   });
   const total = calcTotal();
 
+  // ensure id is numeric when editing to avoid IndexedDB key errors
+  const cleanId = editingEntryId ? Number(editingEntryId) : undefined;
+  const prev = editingEntryId ? (await dbGetById(cleanId)) : null;
   const record = {
+    // leave `id` undefined for new records so autoIncrement works
+    ...(cleanId !== undefined ? { id: cleanId } : {}),
     name,
     date,
-    treasurer: document.getElementById('f-treasurer').value.trim(),
-    projects,
-    total,
-    savedAt: new Date().toISOString(),
-    savedBy: currentUser
+    treasurer: document.getElementById('f-treasurer').value.trim() || '',
+    email: email || '',
+    projects: projects,
+    total: total,
+    savedAt: prev?.savedAt || new Date().toISOString(),
+    savedBy: prev?.savedBy || currentUser || 'unknown',
+    updatedAt: editingEntryId ? new Date().toISOString() : undefined
   };
+  // include current extra labels with the saved record
+  try {
+    record.extraLabels = saveExtraLabels();
+  } catch (e) {
+    record.extraLabels = {};
+  }
+
+  // remove undefined properties to avoid structured clone / IDB DataError
+  Object.keys(record).forEach(k => { if (record[k] === undefined) delete record[k]; });
 
   try {
-    await dbAdd(record);
-    showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
+    if (editingEntryId) {
+      await dbPut(record);
+      showToast(`✓ Updated: ${name} — UGX ${fmtNum(total)}`);
+    } else {
+      await dbAdd(record);
+      showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
+    }
+    // remember person email for autofill
+    if (email) savePerson(name, email);
     clearForm();
     refreshEntryBadge();
+    refreshDashboard();
   } catch (e) {
-    showToast('Error saving. Try again.', true);
+    console.error('Save entry failed', e);
+    showToast('Error saving: ' + (e && e.message ? e.message : e), true);
   }
 }
 
@@ -1245,10 +1576,16 @@ async function refreshDashboard() {
       <td><strong>${r.name}</strong></td>
       <td>${fmtDate(r.date)}</td>
       <td>${r.treasurer || '—'}</td>
+      <td>${r.email || '—'}</td>
       <td><strong>UGX ${fmtNum(r.total)}</strong></td>
-      <td><button class="btn-del" title="Delete" onclick="deleteEntry(${r.id})">🗑</button></td>
+      <td>
+        <button class="btn-del" title="Edit" onclick="loadEntryForEdit(${r.id})">✎</button>
+        <button class="btn-inline server" title="Send via server" onclick="sendReceiptServer(${r.id})">⇧✉</button>
+        <button class="btn-inline email" title="Email receipt" onclick="sendReceiptEmail(${r.id})">✉</button>
+        <button class="btn-del" title="Delete" onclick="deleteEntry(${r.id})">🗑</button>
+      </td>
     </tr>
-  `).join('') : '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--gray);">No entries yet. Start by adding a new entry.</td></tr>';
+  `).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--gray);">No entries yet. Start by adding a new entry.</td></tr>';
 }
 
 function filterTable(q) {
@@ -1266,6 +1603,129 @@ async function deleteEntry(id) {
   refreshEntryBadge();
 }
 
+function buildReceiptEmail(record) {
+  const extraLabels = record.extraLabels || loadExtraLabels();
+  const projectLines = PROJECTS
+    .map(p => `${p.label}: UGX ${fmtNum(record.projects?.[p.id] || 0)}`)
+    .join('\n');
+  const extraLines = ['p-extra1', 'p-extra2', 'p-extra3']
+    .map(id => `${extraLabels[id] || ''}: UGX ${fmtNum(record.projects?.[id] || 0)}`).filter(l => !l.startsWith(':'))
+    .join('\n');
+  const extraTotal = ['p-extra1', 'p-extra2', 'p-extra3']
+    .reduce((sum, id) => sum + (record.projects?.[id] || 0), 0);
+
+  const body = [
+    'Receipt details',
+    '',
+    `Receipt #: ${record.id}`,
+    `Name: ${record.name}`,
+    `Date: ${fmtDate(record.date)}`,
+    `Treasurer: ${record.treasurer || '—'}`,
+    `Email: ${record.email || '—'}`,
+    '',
+    projectLines,
+    extraLines ? ('\n' + extraLines) : '',
+    '',
+    `Other items total: UGX ${fmtNum(extraTotal)}`,
+    `Grand Total: UGX ${fmtNum(record.total)}`,
+    '',
+    'Generated by the E-Receipts system.'
+  ].join('\n');
+
+  const subject = `Receipt #${record.id} - ${record.name}`;
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;color:#222;">
+      <h2>Receipt #${record.id}</h2>
+      <p><strong>Name:</strong> ${record.name}</p>
+      <p><strong>Date:</strong> ${fmtDate(record.date)}</p>
+      <p><strong>Treasurer:</strong> ${record.treasurer || '—'}</p>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+          ${PROJECTS.map(p => `<tr><td style="padding:6px;border-top:1px solid #eee">${p.label}</td><td style="padding:6px;border-top:1px solid #eee;text-align:right">UGX ${fmtNum(record.projects?.[p.id] || 0)}</td></tr>`).join('')}
+          ${['p-extra1','p-extra2','p-extra3'].map(id => {
+            const lbl = extraLabels[id] || '';
+            return lbl ? `<tr><td style="padding:6px;border-top:1px solid #eee">${lbl}</td><td style="padding:6px;border-top:1px solid #eee;text-align:right">UGX ${fmtNum(record.projects?.[id] || 0)}</td></tr>` : '';
+          }).join('')}
+          <tr><td style="padding:8px;border-top:2px solid #ddd"><strong>Total</strong></td><td style="padding:8px;border-top:2px solid #ddd;text-align:right"><strong>UGX ${fmtNum(record.total)}</strong></td></tr>
+        </table>
+      <p style="margin-top:12px;color:#666;font-size:0.9rem;">Generated by the E-Receipts system.</p>
+    </div>
+  `;
+
+  return {
+    mailto: `mailto:${record.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    gmail: `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(record.email || '')}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+    subject,
+    body,
+    html
+  };
+}
+
+async function sendReceiptServer(id) {
+  const record = await dbGetById(id);
+  if (!record) { showToast('Receipt not found.', true); return; }
+  if (!record.email) { showToast('No email for this receipt.', true); return; }
+
+  const payload = buildReceiptEmail(record);
+  const base = window.SRV_BASE || 'http://localhost:3000';
+  try {
+    const res = await fetch(base + '/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: record.email, subject: payload.subject, text: payload.body, html: payload.html })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Send failed');
+    record.sent = true;
+    record.sentAt = new Date().toISOString();
+    await dbPut(record);
+    showToast(`✓ Sent to ${record.email}`);
+    refreshDashboard();
+  } catch (err) {
+    console.error('Server send failed', err);
+    showToast('Server send failed: ' + err.message, true);
+  }
+}
+
+async function sendReceiptEmail(id) {
+  const record = await dbGetById(id);
+  if (!record) {
+    showToast('Receipt not found.', true);
+    return;
+  }
+  if (!record.email) {
+    showToast('This receipt does not have an email address saved.', true);
+    return;
+  }
+  const settings = getEmailDeliverySettings();
+  const message = buildReceiptEmail(record);
+
+  if (settings.serviceId && settings.templateId && settings.publicKey && typeof emailjs !== 'undefined') {
+    try {
+      emailjs.init({ publicKey: settings.publicKey });
+      await emailjs.send(settings.serviceId, settings.templateId, {
+        to_email: record.email,
+        to_name: record.name,
+        subject: `Receipt #${record.id} - ${record.name}`,
+        receipt_id: record.id,
+        receipt_name: record.name,
+        receipt_date: fmtDate(record.date),
+        receipt_treasurer: record.treasurer || '—',
+        receipt_total: `UGX ${fmtNum(record.total)}`,
+        receipt_body: message.body,
+        receipt_html: message.html
+      });
+      showToast(`✓ Receipt sent to ${record.email}`);
+      return;
+    } catch (error) {
+      console.error('EmailJS send failed', error);
+      showToast('Email service failed. Check settings or try again.', true);
+      return;
+    }
+  }
+
+  showToast('Email delivery is not configured yet. Save EmailJS settings first.', true);
+}
+
 // ════════════════════════════════════════
 //  REPORTS
 // ════════════════════════════════════════
@@ -1278,6 +1738,47 @@ function toggleDateInputs() {
 }
 
 let currentReportData = [];
+let lastAnalyticsProjTotals = {};
+let analyticsChart = null;
+
+async function runAnalytics() {
+  const person = document.getElementById('analytics-person').value.trim();
+  const from = document.getElementById('analytics-from').value || '0000-01-01';
+  const to = document.getElementById('analytics-to').value || '9999-12-31';
+
+  const all = await dbGetAll();
+  const filtered = all.filter(r => r.date >= from && r.date <= to);
+
+  // person totals
+  let personRecords = person ? filtered.filter(r => r.name.toLowerCase() === person.toLowerCase()) : [];
+  const personCount = personRecords.length;
+  const personTotal = personRecords.reduce((s, r) => s + (r.total || 0), 0);
+
+  // per-project totals for filtered set
+  const projTotals = {};
+  PROJECTS.forEach(p => projTotals[p.id] = 0);
+  filtered.forEach(r => {
+    PROJECTS.forEach(p => { projTotals[p.id] += (r.projects?.[p.id] || 0); });
+  });
+
+  // render
+  document.getElementById('analytics-output').style.display = 'block';
+  document.getElementById('analytics-meta').textContent = person ? `Analytics for ${person} · ${personCount} entry(s)` : `Analytics · ${filtered.length} record(s)`;
+  document.getElementById('analytics-generated').querySelector('span').textContent = new Date().toLocaleString();
+
+  const personDiv = document.getElementById('analytics-person-summary');
+  if (person) {
+    personDiv.innerHTML = `<div><strong>${person}</strong> · Entries: ${personCount} · Total: UGX ${fmtNum(personTotal)}</div>`;
+  } else {
+    personDiv.innerHTML = `<div><strong>No person selected</strong> — showing project totals for range</div>`;
+  }
+
+  const projDiv = document.getElementById('analytics-projects');
+  projDiv.innerHTML = PROJECTS.map(p => `<div style="display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border);"><div>${p.label}</div><div>UGX ${fmtNum(projTotals[p.id])}</div></div>`).join('');
+  // save for CSV/export and render chart
+  lastAnalyticsProjTotals = projTotals;
+  renderAnalyticsChart(projTotals);
+}
 
 async function runReport() {
   const type = document.getElementById('report-type').value;
@@ -1356,13 +1857,18 @@ async function runReport() {
     <div class="receipt-card">
       <div class="receipt-card-header">
         <strong>${r.name}</strong>
-        <span>Receipt #${r.id} · ${fmtDate(r.date)}</span>
+        <div class="receipt-card-actions">
+          <span>Receipt #${r.id} · ${fmtDate(r.date)}</span>
+          <button class="btn-inline server" onclick="sendReceiptServer(${r.id})">⇧✉ Send</button>
+          <button class="btn-inline email" onclick="sendReceiptEmail(${r.id})">✉ Send Email</button>
+        </div>
       </div>
       <div class="receipt-inner">
         <div class="receipt-meta">
           <span>Name: <b>${r.name}</b></span>
           <span>Date: <b>${fmtDate(r.date)}</b></span>
           <span>Treasurer: <b>${r.treasurer || '—'}</b></span>
+          <span>Email: <b>${r.email || '—'}</b></span>
         </div>
         <div class="receipt-projects">
           <div class="rp-col">
@@ -1399,6 +1905,35 @@ function downloadCSV() {
   a.download = `makerere_sda_receipts_${todayStr()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadAnalyticsCSV() {
+  const person = document.getElementById('analytics-person').value.trim() || 'all';
+  const from = document.getElementById('analytics-from').value || 'start';
+  const to = document.getElementById('analytics-to').value || 'end';
+  const headers = ['Project', 'Total (UGX)'];
+  const rows = PROJECTS.map(p => [p.label, lastAnalyticsProjTotals[p.id] || 0]);
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `analytics_${person}_${from}_${to}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function renderAnalyticsChart(projTotals) {
+  const canvas = document.getElementById('analytics-chart');
+  if (!canvas) return;
+  const labels = PROJECTS.map(p => p.label);
+  const data = PROJECTS.map(p => projTotals[p.id] || 0);
+  if (analyticsChart) analyticsChart.destroy();
+  analyticsChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'UGX', data, backgroundColor: '#25684b' }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
 }
 
 // ════════════════════════════════════════
