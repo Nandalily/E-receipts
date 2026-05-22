@@ -1020,6 +1020,7 @@
               <option value="day">Single Day</option>
               <option value="range">Date Range</option>
               <option value="all">All Records</option>
+              <option value="project">Project</option>
             </select>
           </div>
           <div class="form-group" id="date-from-group">
@@ -1029,6 +1030,10 @@
           <div class="form-group" id="date-to-group" style="display:none;">
             <label>To Date</label>
             <input type="date" id="report-date-to" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;">
+          </div>
+          <div class="form-group" id="project-group" style="display:none;">
+            <label>Project</label>
+            <select id="report-project" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;"></select>
           </div>
           <button class="btn-run" onclick="runReport()">▶ Run Report</button>
         </div>
@@ -1061,6 +1066,15 @@
               <div class="rs-total">Grand Total: <span id="report-grand-total">UGX 0</span></div>
             </div>
             <div style="font-size:0.8rem;color:var(--gray);">Generated: <span id="report-generated-at"></span></div>
+          </div>
+
+          <div id="project-report-summary" class="delivery-card" style="display:none;margin-top:14px;">
+            <h3 id="project-report-title">Project Report</h3>
+            <p id="project-report-meta" style="margin-top:6px;color:var(--gray);"></p>
+            <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;">
+              <div><strong>Selected project total:</strong> <span id="project-report-total">UGX 0</span></div>
+              <div><strong>Matching entries:</strong> <span id="project-report-count">0</span></div>
+            </div>
           </div>
 
           <!-- PROJECT TOTALS SUMMARY TABLE -->
@@ -1530,6 +1544,21 @@ function fmtDate(d) {
   return `${day}/${m}/${y}`;
 }
 
+function fmtDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString();
+}
+
+function populateReportProjectOptions() {
+  const select = document.getElementById('report-project');
+  if (!select) return;
+  select.innerHTML = PROJECTS.map((project, index) => (
+    `<option value="${escAttr(project.id)}"${index === 0 ? ' selected' : ''}>${escHtml(project.label)}</option>`
+  )).join('');
+}
+
 function fmtNum(n) {
   return Number(n || 0).toLocaleString();
 }
@@ -1553,6 +1582,7 @@ function setDefaults() {
   document.getElementById('f-date').value = today;
   document.getElementById('report-date-from').value = today;
   document.getElementById('report-date-to').value = today;
+  populateReportProjectOptions();
   document.getElementById('dash-date').textContent = new Date().toLocaleDateString('en-UG', { weekday:'long', year:'numeric', month:'long', day:'numeric'});
   document.getElementById('stat-today-date').textContent = fmtDate(today);
 }
@@ -1947,8 +1977,10 @@ function toggleDateInputs() {
   const type = document.getElementById('report-type').value;
   document.getElementById('date-from-group').style.display = type === 'all' ? 'none' : '';
   document.getElementById('date-to-group').style.display = type === 'range' ? '' : 'none';
+  document.getElementById('project-group').style.display = type === 'project' ? '' : 'none';
   if (type === 'day') document.querySelector('#date-from-group label').textContent = 'Date';
   if (type === 'range') document.querySelector('#date-from-group label').textContent = 'From Date';
+  if (type === 'project') document.querySelector('#date-from-group label').textContent = 'Date';
 }
 
 let currentReportData = [];
@@ -1998,30 +2030,45 @@ async function runReport() {
   const type = document.getElementById('report-type').value;
   const from = document.getElementById('report-date-from').value;
   const to = document.getElementById('report-date-to').value;
+  const projectId = document.getElementById('report-project').value || PROJECTS[0].id;
+  const selectedProject = PROJECTS.find(p => p.id === projectId) || PROJECTS[0];
 
   const all = await dbGetAll();
   let filtered = all;
 
   if (type === 'day') filtered = all.filter(r => r.date === from);
   else if (type === 'range') filtered = all.filter(r => r.date >= from && r.date <= to);
+  else if (type === 'project') filtered = all.filter(r => (r.projects?.[projectId] || 0) > 0);
 
   currentReportData = filtered;
 
   document.getElementById('report-output').style.display = filtered.length ? 'block' : 'none';
   document.getElementById('report-empty').style.display = filtered.length ? 'none' : 'block';
+  document.getElementById('project-report-summary').style.display = type === 'project' && filtered.length ? 'block' : 'none';
 
   if (!filtered.length) return;
 
   const grandTotal = filtered.reduce((s, r) => s + (r.total || 0), 0);
+  const projectTotal = type === 'project'
+    ? filtered.reduce((sum, record) => sum + (record.projects?.[projectId] || 0), 0)
+    : 0;
   let metaText = `${filtered.length} record(s)`;
   if (type === 'day') metaText += ` · ${fmtDate(from)}`;
   else if (type === 'range') metaText += ` · ${fmtDate(from)} to ${fmtDate(to)}`;
+  else if (type === 'project') metaText += ` · ${selectedProject.label}`;
   else metaText += ' · All records';
 
   document.getElementById('report-meta-text').textContent = metaText;
-  document.getElementById('report-grand-total').textContent = 'UGX ' + fmtNum(grandTotal);
+  document.getElementById('report-grand-total').textContent = 'UGX ' + fmtNum(type === 'project' ? projectTotal : grandTotal);
   document.getElementById('report-generated-at').textContent = new Date().toLocaleString();
-  document.getElementById('print-meta').textContent = metaText + ' · Grand Total: UGX ' + fmtNum(grandTotal);
+  document.getElementById('print-meta').textContent = metaText + ' · Grand Total: UGX ' + fmtNum(type === 'project' ? projectTotal : grandTotal);
+
+  if (type === 'project') {
+    document.getElementById('project-report-title').textContent = `${selectedProject.label} Project Report`;
+    document.getElementById('project-report-meta').textContent = `Showing entries that include ${selectedProject.label}, with the time each receipt was entered.`;
+    document.getElementById('project-report-total').textContent = 'UGX ' + fmtNum(projectTotal);
+    document.getElementById('project-report-count').textContent = String(filtered.length);
+  }
 
   // ── Build project totals ──
   const projTotals = {};
@@ -2049,12 +2096,20 @@ async function runReport() {
   });
   document.getElementById('totals-grand').textContent = 'UGX ' + fmtNum(projGrand);
 
-  const sorted = [...filtered].sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
+  const sorted = [...filtered].sort((a, b) => {
+    if (type === 'project') {
+      const enteredA = (a.savedAt || a.updatedAt || a.date || '').toString();
+      const enteredB = (b.savedAt || b.updatedAt || b.date || '').toString();
+      return enteredB.localeCompare(enteredA) || a.date.localeCompare(b.date) || a.name.localeCompare(b.name);
+    }
+    return a.date.localeCompare(b.date) || a.name.localeCompare(b.name);
+  });
   const list = document.getElementById('report-list');
 
   list.innerHTML = sorted.map(r => {
     const leftProjects = PROJECTS.filter(p => p.col === 0);
     const rightProjects = PROJECTS.filter(p => p.col === 1);
+    const projectFocus = type === 'project' ? (r.projects?.[projectId] || 0) : 0;
 
     const leftRows = leftProjects.map(p => {
       const amt = r.projects?.[p.id] || 0;
@@ -2080,9 +2135,11 @@ async function runReport() {
         <div class="receipt-meta">
           <span>Name: <b>${escHtml(r.name)}</b></span>
           <span>Date: <b>${fmtDate(r.date)}</b></span>
+          <span>Entered: <b>${fmtDateTime(r.savedAt || r.updatedAt || r.date)}</b></span>
           <span>Treasurer: <b>${escHtml(r.treasurer || '—')}</b></span>
           <span>Email: <b>${escHtml(r.email || '—')}</b></span>
         </div>
+        ${type === 'project' ? `<div class="receipt-total" style="margin-top:10px;">${escHtml(selectedProject.label)}: <strong>UGX ${fmtNum(projectFocus)}</strong></div>` : ''}
         <div class="receipt-projects">
           <div class="rp-col">
             <div class="rp-header"><span>PROJECT</span><span>AMOUNT</span></div>
@@ -2104,9 +2161,9 @@ async function runReport() {
 // ════════════════════════════════════════
 function downloadCSV() {
   if (!currentReportData.length) return;
-  const headers = ['ID', 'Name', 'Date', 'Treasurer', ...PROJECTS.map(p => p.label), 'Total'];
+  const headers = ['ID', 'Name', 'Date', 'Entered At', 'Treasurer', ...PROJECTS.map(p => p.label), 'Total'];
   const rows = currentReportData.map(r => [
-    r.id, r.name, r.date, r.treasurer || '',
+    r.id, r.name, r.date, r.savedAt || r.updatedAt || '', r.treasurer || '',
     ...PROJECTS.map(p => r.projects?.[p.id] || 0),
     r.total
   ]);

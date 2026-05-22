@@ -117,7 +117,13 @@ app.delete('/api/receipts/:id', async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => res.send('E-Receipts email API'));
+// app.get('/', (req, res) => res.send('E-Receipts email API'));
+
+// app.use(express.static(__dirname + '/../'));
+// app.get('/', (req, res) => res.sendFile(__dirname + '/../index.html'));
+
+app.use(express.static(__dirname + '/../'));
+app.get('/', (req, res) => res.sendFile(__dirname + '/../index.html'));
 
 app.listen(PORT, () => console.log(`E-Receipts server listening on ${PORT}`));
 
