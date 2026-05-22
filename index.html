@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MUSDAA — E-Receipting System</title>
+<script>
+  window.APP_CONFIG = {
+    emailjs: {
+      serviceId: 'service_2w7mvq1',
+      templateId: 'template_upi3due',
+      publicKey: 'H9V937fyeSRkDjl26'
+    }
+  };
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -827,6 +836,13 @@
       </div>
     </div>
 
+    <div class="nav-section">
+      <div class="nav-label">Settings</div>
+      <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+        <span class="nav-icon">S</span> Delivery Settings
+      </div>
+    </div>
+
     <div class="sidebar-footer">
       <div class="user-chip">
         <div class="user-avatar" id="user-avatar">A</div>
@@ -990,16 +1006,10 @@
       </div>
       <div class="page-body">
         <div class="delivery-card">
-          <h3>Email Delivery Setup</h3>
-          <p>Enter your EmailJS credentials once so receipts can be delivered directly to the recipient instead of opening a draft.</p>
-          <div class="delivery-grid">
-            <input type="text" id="emailjs-service-id" placeholder="EmailJS Service ID">
-            <input type="text" id="emailjs-template-id" placeholder="EmailJS Template ID">
-            <input type="text" id="emailjs-public-key" placeholder="EmailJS Public Key">
-          </div>
+          <h3>Delivery Settings</h3>
+          <p>Open Settings to configure EmailJS or the server API base before sending receipts.</p>
           <div class="delivery-actions">
-            <button class="btn-action gold" onclick="saveEmailDeliverySettings()">Save Email Settings</button>
-            <button class="btn-action" onclick="clearEmailDeliverySettings()">Clear Settings</button>
+            <button class="btn-action gold" onclick="showPage('settings')">Open Settings</button>
           </div>
         </div>
 
@@ -1124,6 +1134,40 @@
       </div>
     </div>
 
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Delivery Settings</div>
+          <div class="page-date">Configure EmailJS defaults and the receipt API base</div>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="delivery-card">
+          <h3>EmailJS Settings</h3>
+          <p>These values can be saved in the browser, or prefilled in the code through <span id="settings-status">loading...</span>.</p>
+          <div class="delivery-grid">
+            <input type="text" id="emailjs-service-id" placeholder="EmailJS Service ID">
+            <input type="text" id="emailjs-template-id" placeholder="EmailJS Template ID">
+            <input type="text" id="emailjs-public-key" placeholder="EmailJS Public Key">
+          </div>
+          <div class="delivery-actions">
+            <button class="btn-action gold" onclick="saveEmailDeliverySettings()">Save Email Settings</button>
+            <button class="btn-action" onclick="clearEmailDeliverySettings()">Clear Settings</button>
+          </div>
+          <div style="height:16px;"></div>
+          <p>Server API base URL for direct receipt sending.</p>
+          <div class="delivery-grid">
+            <input type="url" id="server-api-base" placeholder="http://localhost:3000">
+          </div>
+          <div class="delivery-actions">
+            <button class="btn-action gold" onclick="saveServerApiBase()">Save API Base</button>
+            <button class="btn-action" onclick="clearServerApiBase()">Clear API Base</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1142,8 +1186,16 @@ const USERS = {
 let currentUser = null;
 let editingEntryId = null;
 const EMAIL_SETTINGS_KEY = 'receipt_email_delivery_settings';
+const SERVER_API_BASE_KEY = 'receipt_server_api_base_url';
 const PERSONS_KEY = 'receipt_persons';
 const EXTRA_LABELS_KEY = 'receipt_extra_labels';
+const APP_CONFIG = window.APP_CONFIG || {};
+const EMAILJS_CODE_DEFAULTS = APP_CONFIG.emailjs && typeof APP_CONFIG.emailjs === 'object' ? APP_CONFIG.emailjs : {};
+const SERVER_API_CODE_DEFAULT = typeof APP_CONFIG.serverApiBase === 'string' && APP_CONFIG.serverApiBase.trim()
+  ? APP_CONFIG.serverApiBase.trim().replace(/\/$/, '')
+  : (typeof APP_CONFIG.serverApiBaseUrl === 'string' && APP_CONFIG.serverApiBaseUrl.trim()
+      ? APP_CONFIG.serverApiBaseUrl.trim().replace(/\/$/, '')
+      : '');
 
 function loadPersons() {
   try {
@@ -1207,9 +1259,18 @@ function updatePersonsDatalist(obj) {
 
 function getEmailDeliverySettings() {
   try {
-    return JSON.parse(localStorage.getItem(EMAIL_SETTINGS_KEY) || '{}');
+    const saved = JSON.parse(localStorage.getItem(EMAIL_SETTINGS_KEY) || '{}');
+    return {
+      serviceId: saved.serviceId || EMAILJS_CODE_DEFAULTS.serviceId || '',
+      templateId: saved.templateId || EMAILJS_CODE_DEFAULTS.templateId || '',
+      publicKey: saved.publicKey || EMAILJS_CODE_DEFAULTS.publicKey || ''
+    };
   } catch (e) {
-    return {};
+    return {
+      serviceId: EMAILJS_CODE_DEFAULTS.serviceId || '',
+      templateId: EMAILJS_CODE_DEFAULTS.templateId || '',
+      publicKey: EMAILJS_CODE_DEFAULTS.publicKey || ''
+    };
   }
 }
 
@@ -1227,6 +1288,17 @@ function applyEmailDeliverySettings() {
   return true;
 }
 
+function getEmailDeliveryStatus() {
+  const settings = getEmailDeliverySettings();
+  if (!settings.serviceId || !settings.templateId || !settings.publicKey) {
+    return { ok: false, reason: 'missing-settings' };
+  }
+  if (typeof emailjs === 'undefined') {
+    return { ok: false, reason: 'emailjs-unavailable' };
+  }
+  return { ok: true, settings };
+}
+
 function saveEmailDeliverySettings() {
   const settings = {
     serviceId: document.getElementById('emailjs-service-id').value.trim(),
@@ -1242,12 +1314,54 @@ function saveEmailDeliverySettings() {
   localStorage.setItem(EMAIL_SETTINGS_KEY, JSON.stringify(settings));
   applyEmailDeliverySettings();
   showToast('Email delivery settings saved.');
+  updateSettingsStatus();
 }
 
 function clearEmailDeliverySettings() {
   localStorage.removeItem(EMAIL_SETTINGS_KEY);
   loadEmailDeliverySettings();
   showToast('Email delivery settings cleared.');
+  updateSettingsStatus();
+}
+
+function getServerApiBase() {
+  const savedBase = localStorage.getItem(SERVER_API_BASE_KEY);
+  if (savedBase) return savedBase.replace(/\/$/, '');
+  if (SERVER_API_CODE_DEFAULT) return SERVER_API_CODE_DEFAULT;
+  if (typeof window.SRV_BASE === 'string' && window.SRV_BASE.trim()) {
+    return window.SRV_BASE.trim().replace(/\/$/, '');
+  }
+  if (window.location.protocol === 'file:') {
+    return 'http://localhost:3000';
+  }
+  return window.location.origin.replace(/\/$/, '');
+}
+
+function loadServerApiBase() {
+  const input = document.getElementById('server-api-base');
+  if (!input) return;
+  input.value = localStorage.getItem(SERVER_API_BASE_KEY) || '';
+}
+
+function saveServerApiBase() {
+  const input = document.getElementById('server-api-base');
+  const value = input ? input.value.trim() : '';
+  if (!value) {
+    localStorage.removeItem(SERVER_API_BASE_KEY);
+    showToast('Email API base cleared.');
+    updateSettingsStatus();
+    return;
+  }
+  localStorage.setItem(SERVER_API_BASE_KEY, value.replace(/\/$/, ''));
+  showToast('Email API base saved.');
+  updateSettingsStatus();
+}
+
+function clearServerApiBase() {
+  localStorage.removeItem(SERVER_API_BASE_KEY);
+  loadServerApiBase();
+  showToast('Email API base cleared.');
+  updateSettingsStatus();
 }
 
 function doLogin() {
@@ -1299,6 +1413,7 @@ function initDB() {
   req.onsuccess = e => {
     db = e.target.result;
     loadEmailDeliverySettings();
+    loadServerApiBase();
     applyEmailDeliverySettings();
     setDefaults();
     refreshDashboard();
@@ -1383,6 +1498,11 @@ function showPage(id) {
   document.getElementById('nav-' + id).classList.add('active');
   if (id === 'dashboard') refreshDashboard();
   if (id === 'entry') refreshEntryBadge();
+  if (id === 'settings') {
+    loadEmailDeliverySettings();
+    loadServerApiBase();
+    updateSettingsStatus();
+  }
 }
 
 // ════════════════════════════════════════
@@ -1412,6 +1532,20 @@ function fmtDate(d) {
 
 function fmtNum(n) {
   return Number(n || 0).toLocaleString();
+}
+
+function escHtml(input) {
+  if (input === null || input === undefined) return '';
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escAttr(input) {
+  return escHtml(input).replace(/"/g, '&quot;');
 }
 
 function setDefaults() {
@@ -1452,6 +1586,19 @@ function updateEntryFormMode() {
   const button = document.getElementById('save-entry-btn');
   if (!button) return;
   button.innerHTML = editingEntryId ? '<span>..</span> Update Entry' : '<span>💾</span> Save &amp; Next Person';
+}
+
+function updateSettingsStatus() {
+  const status = document.getElementById('settings-status');
+  if (!status) return;
+
+  const emailSettings = getEmailDeliverySettings();
+  const serverBase = getServerApiBase();
+  const emailConfigured = Boolean(emailSettings.serviceId && emailSettings.templateId && emailSettings.publicKey);
+  const emailSource = localStorage.getItem(EMAIL_SETTINGS_KEY) ? 'browser storage' : (EMAILJS_CODE_DEFAULTS.serviceId ? 'code defaults' : 'not configured');
+  const serverSource = localStorage.getItem(SERVER_API_BASE_KEY) ? 'browser storage' : (SERVER_API_CODE_DEFAULT ? 'code defaults' : 'fallback');
+
+  status.textContent = `EmailJS: ${emailConfigured ? 'ready' : 'missing'} (${emailSource}) · Server API: ${serverBase || 'not set'} (${serverSource})`;
 }
 
 async function loadEntryForEdit(id) {
@@ -1528,12 +1675,47 @@ async function saveEntry() {
   Object.keys(record).forEach(k => { if (record[k] === undefined) delete record[k]; });
 
   try {
-    if (editingEntryId) {
-      await dbPut(record);
-      showToast(`✓ Updated: ${name} — UGX ${fmtNum(total)}`);
+    const serverBase = getServerApiBase();
+    if (serverBase) {
+      try {
+        const url = editingEntryId ? `${serverBase}/api/receipts/${cleanId}` : `${serverBase}/api/receipts`;
+        const method = editingEntryId ? 'PUT' : 'POST';
+        const resp = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        });
+        if (!resp.ok) throw new Error('Server responded ' + resp.status);
+        const serverRec = await resp.json();
+        // keep a local copy for offline reads; prefer server id when available
+        if (serverRec && serverRec.id) record.id = serverRec.id;
+        try {
+          if (editingEntryId) await dbPut(record);
+          else await dbAdd(record);
+        } catch (e) {
+          // ignore local save errors
+        }
+        showToast(`✓ Saved (server): ${name} — UGX ${fmtNum(total)}`);
+      } catch (err) {
+        // server unavailable — fallback to local DB
+        console.warn('Server save failed, falling back to local DB', err);
+        if (editingEntryId) {
+          await dbPut(record);
+          showToast(`✓ Updated (local): ${name} — UGX ${fmtNum(total)}`);
+        } else {
+          await dbAdd(record);
+          showToast(`✓ Saved (local): ${name} — UGX ${fmtNum(total)} (offline)`);
+        }
+      }
     } else {
-      await dbAdd(record);
-      showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
+      // no server configured, use IndexedDB
+      if (editingEntryId) {
+        await dbPut(record);
+        showToast(`✓ Updated: ${name} — UGX ${fmtNum(total)}`);
+      } else {
+        await dbAdd(record);
+        showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
+      }
     }
     // remember person email for autofill
     if (email) savePerson(name, email);
@@ -1571,12 +1753,12 @@ async function refreshDashboard() {
   const tbody = document.getElementById('recent-tbody');
   const sorted = [...all].sort((a, b) => b.id - a.id).slice(0, 50);
   tbody.innerHTML = sorted.length ? sorted.map((r, i) => `
-    <tr data-name="${r.name.toLowerCase()}">
+    <tr data-name="${escAttr((r.name||'').toLowerCase())}">
       <td>${r.id}</td>
-      <td><strong>${r.name}</strong></td>
+      <td><strong>${escHtml(r.name)}</strong></td>
       <td>${fmtDate(r.date)}</td>
-      <td>${r.treasurer || '—'}</td>
-      <td>${r.email || '—'}</td>
+      <td>${escHtml(r.treasurer || '—')}</td>
+      <td>${escHtml(r.email || '—')}</td>
       <td><strong>UGX ${fmtNum(r.total)}</strong></td>
       <td>
         <button class="btn-del" title="Edit" onclick="loadEntryForEdit(${r.id})">✎</button>
@@ -1666,23 +1848,37 @@ async function sendReceiptServer(id) {
   if (!record.email) { showToast('No email for this receipt.', true); return; }
 
   const payload = buildReceiptEmail(record);
-  const base = window.SRV_BASE || 'http://localhost:3000';
+  const base = getServerApiBase();
+  if (!base) {
+    showToast('Set the email API base URL first.', true);
+    return;
+  }
+  let responseText = '';
   try {
     const res = await fetch(base + '/api/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: record.email, subject: payload.subject, text: payload.body, html: payload.html })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Send failed');
+    responseText = await res.text();
+    let data = null;
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        data = { error: responseText };
+      }
+    }
+    if (!res.ok) throw new Error((data && (data.error || data.message)) || `Send failed (${res.status})`);
     record.sent = true;
     record.sentAt = new Date().toISOString();
     await dbPut(record);
     showToast(`✓ Sent to ${record.email}`);
     refreshDashboard();
   } catch (err) {
-    console.error('Server send failed', err);
-    showToast('Server send failed: ' + err.message, true);
+    console.error('Server send failed', err, responseText);
+    const msg = (err && err.message) ? err.message : String(err);
+    showToast('Server send failed: ' + msg + (responseText ? ' — ' + responseText : ''), true);
   }
 }
 
@@ -1696,34 +1892,52 @@ async function sendReceiptEmail(id) {
     showToast('This receipt does not have an email address saved.', true);
     return;
   }
-  const settings = getEmailDeliverySettings();
+  const status = getEmailDeliveryStatus();
   const message = buildReceiptEmail(record);
 
-  if (settings.serviceId && settings.templateId && settings.publicKey && typeof emailjs !== 'undefined') {
-    try {
-      emailjs.init({ publicKey: settings.publicKey });
-      await emailjs.send(settings.serviceId, settings.templateId, {
-        to_email: record.email,
-        to_name: record.name,
-        subject: `Receipt #${record.id} - ${record.name}`,
-        receipt_id: record.id,
-        receipt_name: record.name,
-        receipt_date: fmtDate(record.date),
-        receipt_treasurer: record.treasurer || '—',
-        receipt_total: `UGX ${fmtNum(record.total)}`,
-        receipt_body: message.body,
-        receipt_html: message.html
-      });
-      showToast(`✓ Receipt sent to ${record.email}`);
+  if (!status.ok) {
+    if (getServerApiBase()) {
+      showToast('EmailJS is not ready here. Sending through the server API instead.');
+      await sendReceiptServer(record.id);
       return;
-    } catch (error) {
-      console.error('EmailJS send failed', error);
-      showToast('Email service failed. Check settings or try again.', true);
+    }
+    if (status.reason === 'missing-settings') {
+      showToast('EmailJS settings were not saved. Re-enter Service ID, Template ID, and Public Key, then click Save Email Settings.', true);
+      return;
+    }
+    if (status.reason === 'emailjs-unavailable') {
+      showToast('EmailJS library did not load. Check your internet connection or CDN access.', true);
       return;
     }
   }
 
-  showToast('Email delivery is not configured yet. Save EmailJS settings first.', true);
+  try {
+    emailjs.init({ publicKey: status.settings.publicKey });
+    await emailjs.send(status.settings.serviceId, status.settings.templateId, {
+      to_email: record.email,
+      to_name: record.name,
+      recipient_name: record.name,
+      recipient_email: record.email,
+      name: record.name,
+      email: record.email,
+      time: new Date().toLocaleString(),
+      subject: `Receipt #${record.id} - ${record.name}`,
+      receipt_id: record.id,
+      receipt_name: record.name,
+      receipt_date: fmtDate(record.date),
+      receipt_treasurer: record.treasurer || '—',
+      receipt_total: `UGX ${fmtNum(record.total)}`,
+      message: message.body,
+      receipt_body: message.body,
+      receipt_html: message.html
+    });
+    showToast(`✓ Receipt sent to ${record.email}`);
+    return;
+  } catch (error) {
+    console.error('EmailJS send failed', error);
+    showToast('Email service failed: ' + (error && error.text ? error.text : error.message || 'unknown error'), true);
+    return;
+  }
 }
 
 // ════════════════════════════════════════
@@ -1841,7 +2055,6 @@ async function runReport() {
   list.innerHTML = sorted.map(r => {
     const leftProjects = PROJECTS.filter(p => p.col === 0);
     const rightProjects = PROJECTS.filter(p => p.col === 1);
-    const maxRows = Math.max(leftProjects.length, rightProjects.length);
 
     const leftRows = leftProjects.map(p => {
       const amt = r.projects?.[p.id] || 0;
@@ -1856,7 +2069,7 @@ async function runReport() {
     return `
     <div class="receipt-card">
       <div class="receipt-card-header">
-        <strong>${r.name}</strong>
+        <strong>${escHtml(r.name)}</strong>
         <div class="receipt-card-actions">
           <span>Receipt #${r.id} · ${fmtDate(r.date)}</span>
           <button class="btn-inline server" onclick="sendReceiptServer(${r.id})">⇧✉ Send</button>
@@ -1865,10 +2078,10 @@ async function runReport() {
       </div>
       <div class="receipt-inner">
         <div class="receipt-meta">
-          <span>Name: <b>${r.name}</b></span>
+          <span>Name: <b>${escHtml(r.name)}</b></span>
           <span>Date: <b>${fmtDate(r.date)}</b></span>
-          <span>Treasurer: <b>${r.treasurer || '—'}</b></span>
-          <span>Email: <b>${r.email || '—'}</b></span>
+          <span>Treasurer: <b>${escHtml(r.treasurer || '—')}</b></span>
+          <span>Email: <b>${escHtml(r.email || '—')}</b></span>
         </div>
         <div class="receipt-projects">
           <div class="rp-col">
