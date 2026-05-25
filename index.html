@@ -815,8 +815,8 @@
   <!-- Sidebar -->
   <nav id="sidebar">
     <div class="sidebar-header">
-      <div class="org-name">Makerere SeventhDay Adventist<br>Association</div>
-      <div class="org-sub">E-Receipts System</div>
+      <div class="org-name">MUSDAA</div>
+      <div class="org-sub">E-Receipting System</div>
     </div>
 
     <div class="nav-section">
@@ -824,22 +824,37 @@
       <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
         <span class="nav-icon">D</span> Dashboard
       </div>
+      <br>
       <div class="nav-item" onclick="showPage('entry')" id="nav-entry">
         <span class="nav-icon">E</span> New Entry
       </div>
     </div>
 
     <div class="nav-section">
-      <div class="nav-label">Reports</div>
+      <!-- <div class="nav-label">Reports</div> -->
       <div class="nav-item" onclick="showPage('reports')" id="nav-reports">
-        <span class="nav-icon">R</span> Run Reports
+        <span class="nav-icon">R</span>  Reports
       </div>
     </div>
+   
+    <br>
+    <br>
+    <br>
+        <br>
+    <br>
+    <br>
+        <br>
+    <br>
+    <br>
+        <br>
+    <br>
+    <br>
+
 
     <div class="nav-section">
-      <div class="nav-label">Settings</div>
+      <!-- <div class="nav-label">Settings</div> -->
       <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
-        <span class="nav-icon">S</span> Delivery Settings
+        <span class="nav-icon">S</span>  Settings
       </div>
     </div>
 
@@ -847,7 +862,7 @@
       <div class="user-chip">
         <div class="user-avatar" id="user-avatar">A</div>
         <div>
-          <div class="user-name" id="user-display">Admin</div>
+          <div class="user-name" id="user-display">Treasurer</div>
           <button class="btn-logout" onclick="doLogout()">Sign out</button>
         </div>
       </div>
@@ -871,7 +886,7 @@
           <div class="stat-card">
             <div class="stat-label">Total Entries</div>
             <div class="stat-value" id="stat-total">0</div>
-            <div class="stat-sub">All time</div>
+            <div class="stat-sub">since:16/05/2026</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Today's Entries</div>
@@ -881,7 +896,7 @@
           <div class="stat-card">
             <div class="stat-label">Total Collected</div>
             <div class="stat-value" id="stat-amount">0</div>
-            <div class="stat-sub">UGX all time</div>
+            <div class="stat-sub">UGX since:16/05/2026</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Today's Collection</div>
@@ -920,7 +935,7 @@
       <div class="page-header">
         <div>
           <div class="page-title">New Receipt Entry</div>
-          <div class="page-date">Fill in the details and save to proceed to next person</div>
+          <!-- <div class="page-date">Fill in the details and save to proceed to next person</div> -->
         </div>
         <span class="receipt-count" id="entry-count-badge">0 saved today</span>
       </div>
@@ -933,7 +948,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Full Name *</label>
-                <input type="text" id="f-name" list="persons-list" placeholder="e.g. John Mukasa" autocomplete="off">
+                <input type="text" id="f-name" list="persons-list" placeholder="e.g. Lilian Nankunda" autocomplete="off">
                 <datalist id="persons-list"></datalist>
               </div>
               <div class="form-group">
@@ -948,7 +963,7 @@
               </div>
               <div class="form-group">
                 <label>Email</label>
-                <input type="email" id="f-email" placeholder="person@example.com" autocomplete="email">
+                <input type="email" id="f-email" placeholder="nankunda@example.com" autocomplete="email">
               </div>
             </div>
 
@@ -974,9 +989,9 @@
                 <div class="project-row"><span class="project-name">Social Day</span><div class="project-amount"><input type="number" min="0" id="p-social" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Umbrellas</span><div class="project-amount"><input type="number" min="0" id="p-umbrellas" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Bibles</span><div class="project-amount"><input type="number" min="0" id="p-bibles" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><input class="project-name-input" id="p-extra1-label" placeholder="Label for extra item 1" oninput="saveExtraLabels()" value="Extra Item 1"><div class="project-amount"><input type="number" min="0" id="p-extra1" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><input class="project-name-input" id="p-extra2-label" placeholder="Label for extra item 2" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><input class="project-name-input" id="p-extra3-label" placeholder="Label for extra item 3" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra3" placeholder="0" oninput="calcTotal()"></div></div>
+                 <div class="project-row"><input class="project-name-input" id="p-extra2-label" placeholder="other" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><input class="project-name-input" id="p-extra2-label" placeholder="other" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><input class="project-name-input" id="p-extra3-label" placeholder="other" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra3" placeholder="0" oninput="calcTotal()"></div></div>
               </div>
             </div>
 
@@ -986,9 +1001,9 @@
             </div>
 
             <div class="form-actions">
-              <button class="btn-secondary" onclick="clearForm()">Clear Form</button>
+              <button class="btn-secondary" onclick="clearForm()">Re-enter</button>
               <button class="btn-save" id="save-entry-btn" onclick="saveEntry()">
-                <span>..</span> Save &amp; Next Person
+                <span></span> Save &amp; Next 
               </button>
             </div>
           </div>
@@ -1001,13 +1016,13 @@
       <div class="page-header">
         <div>
           <div class="page-title">Reports</div>
-          <div class="page-date">Generate and download receipt reports</div>
+          <!-- <div class="page-date">Generate and download receipt reports</div> -->
         </div>
       </div>
       <div class="page-body">
         <div class="delivery-card">
           <h3>Delivery Settings</h3>
-          <p>Open Settings to configure EmailJS or the server API base before sending receipts.</p>
+          <!-- <p>Open Settings to configure EmailJS or the server API base before sending receipts.</p> -->
           <div class="delivery-actions">
             <button class="btn-action gold" onclick="showPage('settings')">Open Settings</button>
           </div>
@@ -1098,9 +1113,9 @@
                 <div class="totals-row" id="tot-p-social"><span>Social Day</span><span>&#8212;</span></div>
                 <div class="totals-row" id="tot-p-umbrellas"><span>Umbrellas</span><span>&#8212;</span></div>
                 <div class="totals-row" id="tot-p-bibles"><span>Bibles</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-extra1"><span id="tot-p-extra1-label">Extra Item 1</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-extra2"><span id="tot-p-extra2-label">Extra Item 2</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-extra3"><span id="tot-p-extra3-label">Extra Item 3</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-extra1"><span id="tot-p-extra1-label">other</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-extra2"><span id="tot-p-extra2-label">other</span><span>&#8212;</span></div>
+                <div class="totals-row" id="tot-p-extra3"><span id="tot-p-extra3-label">other</span><span>&#8212;</span></div>
               </div>
             </div>
             <div class="totals-footer">
@@ -1153,13 +1168,13 @@
       <div class="page-header">
         <div>
           <div class="page-title">Delivery Settings</div>
-          <div class="page-date">Configure EmailJS defaults and the receipt API base</div>
+          <!-- <div class="page-date">Configure EmailJS defaults and the receipt API base</div> -->
         </div>
       </div>
       <div class="page-body">
         <div class="delivery-card">
           <h3>EmailJS Settings</h3>
-          <p>These values can be saved in the browser, or prefilled in the code through <span id="settings-status">loading...</span>.</p>
+          <!-- <p>These values can be saved in the browser, or prefilled in the code through <span id="settings-status">loading...</span>.</p> -->
           <div class="delivery-grid">
             <input type="text" id="emailjs-service-id" placeholder="EmailJS Service ID">
             <input type="text" id="emailjs-template-id" placeholder="EmailJS Template ID">
@@ -1170,7 +1185,7 @@
             <button class="btn-action" onclick="clearEmailDeliverySettings()">Clear Settings</button>
           </div>
           <div style="height:16px;"></div>
-          <p>Server API base URL for direct receipt sending.</p>
+          <!-- <p>Server API base URL for direct receipt sending.</p> -->
           <div class="delivery-grid">
             <input type="url" id="server-api-base" placeholder="http://localhost:3000">
           </div>
@@ -1227,9 +1242,9 @@ function loadExtraLabels() {
     const raw = localStorage.getItem(EXTRA_LABELS_KEY) || '{}';
     const obj = JSON.parse(raw);
     // set inputs if present
-    document.getElementById('p-extra1-label').value = obj['p-extra1'] || 'Extra Item 1';
-    document.getElementById('p-extra2-label').value = obj['p-extra2'] || '';
-    document.getElementById('p-extra3-label').value = obj['p-extra3'] || '';
+    document.getElementById('p-extra1-label').value = obj['p-extra1'] || 'other';
+    document.getElementById('p-extra2-label').value = obj['p-extra2'] || 'other';
+    document.getElementById('p-extra3-label').value = obj['p-extra3'] || 'other';
     return obj;
   } catch (e) {
     return {};
@@ -1238,9 +1253,9 @@ function loadExtraLabels() {
 
 function saveExtraLabels() {
   const obj = {
-    'p-extra1': document.getElementById('p-extra1-label').value.trim() || 'Extra Item 1',
-    'p-extra2': document.getElementById('p-extra2-label').value.trim() || '',
-    'p-extra3': document.getElementById('p-extra3-label').value.trim() || ''
+    'p-extra1': document.getElementById('p-extra1-label').value.trim() || 'other',
+    'p-extra2': document.getElementById('p-extra2-label').value.trim() || 'other',
+    'p-extra3': document.getElementById('p-extra3-label').value.trim() || 'other'
   };
   localStorage.setItem(EXTRA_LABELS_KEY, JSON.stringify(obj));
   populateReportProjectOptions();
@@ -1536,9 +1551,9 @@ const PROJECTS = [
 ];
 
 const EXTRA_PROJECTS = [
-  { id: 'p-extra1', defaultLabel: 'Extra Item 1', col: 1 },
-  { id: 'p-extra2', defaultLabel: 'Extra Item 2', col: 1 },
-  { id: 'p-extra3', defaultLabel: 'Extra Item 3', col: 1 }
+  { id: 'p-extra1', defaultLabel: 'other', col: 1 },
+  { id: 'p-extra2', defaultLabel: 'other', col: 1 },
+  { id: 'p-extra3', defaultLabel: 'other', col: 1 }
 ];
 
 function getExtraProjectDefs(labels) {
@@ -1839,6 +1854,7 @@ async function deleteEntry(id) {
 
 function buildReceiptEmail(record) {
   const extraLabels = record.extraLabels || loadExtraLabels();
+  const recipientName = (record.name || '').trim() || 'Nankunda Lilian';
   const projectLines = PROJECTS
     .map(p => `${p.label}: UGX ${fmtNum(record.projects?.[p.id] || 0)}`)
     .join('\n');
@@ -1852,6 +1868,10 @@ function buildReceiptEmail(record) {
     .reduce((sum, id) => sum + (record.projects?.[id] || 0), 0);
 
   const body = [
+    `Dear ${recipientName},`,
+    '',
+    'We acknowledge receipt of your contribution to Makerere SeventhDay Adventist Association.',
+    '',
     'Receipt details',
     '',
     `Receipt #: ${record.id}`,
@@ -1875,6 +1895,8 @@ function buildReceiptEmail(record) {
   const subject = `Receipt #${record.id} - ${record.name}`;
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#222;">
+      <p style="margin:0 0 10px 0;">Dear ${escHtml(recipientName)},</p>
+      <p style="margin:0 0 14px 0;">We acknowledge receipt of your contribution to Makerere SeventhDay Adventist Association.</p>
       <h2>Receipt #${record.id}</h2>
       <p><strong>Name:</strong> ${record.name}</p>
       <p><strong>Date:</strong> ${fmtDate(record.date)}</p>
