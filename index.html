@@ -815,7 +815,8 @@
   <!-- Sidebar -->
   <nav id="sidebar">
     <div class="sidebar-header">
-      <div class="org-name">MUSDAA</div>
+      <div class="org-name">MUSDAA Work
+      </div>
       <div class="org-sub">E-Receipting System</div>
     </div>
 
@@ -1404,7 +1405,7 @@ function doLogin() {
     document.getElementById('user-display').textContent = u.charAt(0).toUpperCase() + u.slice(1);
     document.getElementById('user-avatar').textContent = u.charAt(0).toUpperCase();
     document.getElementById('f-treasurer').value = u.charAt(0).toUpperCase() + u.slice(1);
-    initDB();
+    initApp();
   } else {
     document.getElementById('login-error').style.display = 'block';
   }
@@ -1423,99 +1424,70 @@ function doLogout() {
 }
 
 // ════════════════════════════════════════
-//  INDEXEDDB
+//  SERVER API
 // ════════════════════════════════════════
-let db;
-const DB_NAME = 'makerere_sda_db';
-const DB_VERSION = 1;
-const STORE = 'receipts';
-
-function initDB() {
-  const req = indexedDB.open(DB_NAME, DB_VERSION);
-  req.onupgradeneeded = e => {
-    db = e.target.result;
-    if (!db.objectStoreNames.contains(STORE)) {
-      const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-      store.createIndex('date', 'date', { unique: false });
-      store.createIndex('name', 'name', { unique: false });
-    }
+function normalizeReceipt(record) {
+  if (!record) return null;
+  return {
+    ...record,
+    extraLabels: record.extraLabels || record.extra_labels || {},
+    savedAt: record.savedAt || record.saved_at || '',
+    savedBy: record.savedBy || record.saved_by || '',
+    updatedAt: record.updatedAt || record.updated_at || '',
+    sent: Boolean(record.sent),
+    sentAt: record.sentAt || record.sent_at || ''
   };
-  req.onsuccess = e => {
-    db = e.target.result;
-    loadEmailDeliverySettings();
-    loadServerApiBase();
-    applyEmailDeliverySettings();
-    setDefaults();
-    refreshDashboard();
-    refreshEntryBadge();
-    // load saved persons for autofill
-    loadPersons();
-    // load editable extra labels
-    loadExtraLabels();
-    const nameInput = document.getElementById('f-name');
-    if (nameInput) {
-      nameInput.addEventListener('input', e => {
-        const val = e.target.value.trim();
-        const email = getPersonByName(val);
-        if (email !== null && email !== undefined) document.getElementById('f-email').value = email;
-      });
+}
+
+function normalizeReceiptList(records) {
+  return Array.isArray(records) ? records.map(normalizeReceipt) : [];
+}
+
+async function apiRequest(path, options = {}) {
+  const base = getServerApiBase();
+  if (!base) throw new Error('Server API base not configured');
+
+  const response = await fetch(base + path, {
+    method: options.method || 'GET',
+    headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+
+  const responseText = await response.text();
+  let data = null;
+  if (responseText) {
+    try {
+      data = JSON.parse(responseText);
+    } catch (error) {
+      data = { message: responseText };
     }
-  };
-  req.onerror = () => showToast('Database error. Please refresh.', true);
+  }
+
+  if (!response.ok) {
+    throw new Error((data && (data.error || data.message)) || `Request failed (${response.status})`);
+  }
+
+  return data;
 }
 
-function dbAdd(record) {
-  return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error('Database not initialized'));
-    const tx = db.transaction(STORE, 'readwrite');
-    const store = tx.objectStore(STORE);
-    const req = store.add(record);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
+async function initApp() {
+  loadEmailDeliverySettings();
+  loadServerApiBase();
+  applyEmailDeliverySettings();
+  setDefaults();
+  refreshDashboard();
+  refreshEntryBadge();
+  loadPersons();
+  loadExtraLabels();
 
-function dbGetAll() {
-  return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error('Database not initialized'));
-    const tx = db.transaction(STORE, 'readonly');
-    const store = tx.objectStore(STORE);
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function dbGetById(id) {
-  return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error('Database not initialized'));
-    const tx = db.transaction(STORE, 'readonly');
-    const store = tx.objectStore(STORE);
-    const req = store.get(Number(id));
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function dbPut(record) {
-  return new Promise((resolve, reject) => {
-    if (!db) return reject(new Error('Database not initialized'));
-    const tx = db.transaction(STORE, 'readwrite');
-    const store = tx.objectStore(STORE);
-    const req = store.put(record);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-function dbDelete(id) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    const store = tx.objectStore(STORE);
-    const req = store.delete(id);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+  const nameInput = document.getElementById('f-name');
+  if (nameInput) {
+    nameInput.addEventListener('input', e => {
+      const val = e.target.value.trim();
+      const email = getPersonByName(val);
+      if (email !== null && email !== undefined) document.getElementById('f-email').value = email;
+    });
+  }
 }
 
 // ════════════════════════════════════════
@@ -1667,16 +1639,8 @@ function updateSettingsStatus() {
 
 // NEW
 async function getRecordById(id) {
-  const base = getServerApiBase();
-  if (base) {
-    try {
-      const res = await fetch(base + '/api/receipts/' + id);
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn('Server fetch by id failed, trying local DB', e);
-    }
-  }
-  return dbGetById(id);
+  const record = await apiRequest('/api/receipts/' + id);
+  return normalizeReceipt(record);
 }
 
 async function loadEntryForEdit(id) {
@@ -1729,11 +1693,9 @@ async function saveEntry() {
   });
   const total = calcTotal();
 
-  // ensure id is numeric when editing to avoid IndexedDB key errors
   const cleanId = editingEntryId ? Number(editingEntryId) : undefined;
   const prev = editingEntryId ? (await getRecordById(cleanId)) : null;
   const record = {
-    // leave `id` undefined for new records so autoIncrement works
     ...(cleanId !== undefined ? { id: cleanId } : {}),
     name,
     date,
@@ -1743,63 +1705,22 @@ async function saveEntry() {
     total: total,
     savedAt: prev?.savedAt || new Date().toISOString(),
     savedBy: prev?.savedBy || currentUser || 'unknown',
-    updatedAt: editingEntryId ? new Date().toISOString() : undefined
+    updatedAt: editingEntryId ? new Date().toISOString() : undefined,
+    sent: prev?.sent || false,
+    sentAt: prev?.sentAt || undefined
   };
-  // include current extra labels with the saved record
-  try {
-    record.extraLabels = saveExtraLabels();
-  } catch (e) {
-    record.extraLabels = {};
-  }
+  record.extraLabels = saveExtraLabels();
 
-  // remove undefined properties to avoid structured clone / IDB DataError
   Object.keys(record).forEach(k => { if (record[k] === undefined) delete record[k]; });
 
   try {
-    const serverBase = getServerApiBase();
-    if (serverBase) {
-      try {
-        const url = editingEntryId ? `${serverBase}/api/receipts/${cleanId}` : `${serverBase}/api/receipts`;
-        const method = editingEntryId ? 'PUT' : 'POST';
-        const resp = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(record)
-        });
-        if (!resp.ok) throw new Error('Server responded ' + resp.status);
-        const serverRec = await resp.json();
-        // keep a local copy for offline reads; prefer server id when available
-        if (serverRec && serverRec.id) record.id = serverRec.id;
-        try {
-          if (editingEntryId) await dbPut(record);
-          else await dbAdd(record);
-        } catch (e) {
-          // ignore local save errors
-        }
-        showToast(`✓ Saved (server): ${name} — UGX ${fmtNum(total)}`);
-      } catch (err) {
-        // server unavailable — fallback to local DB
-        console.warn('Server save failed, falling back to local DB', err);
-        if (editingEntryId) {
-          await dbPut(record);
-          showToast(`✓ Updated (local): ${name} — UGX ${fmtNum(total)}`);
-        } else {
-          await dbAdd(record);
-          showToast(`✓ Saved (local): ${name} — UGX ${fmtNum(total)} (offline)`);
-        }
-      }
-    } else {
-      // no server configured, use IndexedDB
-      if (editingEntryId) {
-        await dbPut(record);
-        showToast(`✓ Updated: ${name} — UGX ${fmtNum(total)}`);
-      } else {
-        await dbAdd(record);
-        showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
-      }
-    }
-    // remember person email for autofill
+    const savedRecord = await apiRequest(editingEntryId ? `/api/receipts/${cleanId}` : '/api/receipts', {
+      method: editingEntryId ? 'PUT' : 'POST',
+      body: record
+    });
+    if (savedRecord && savedRecord.id) editingEntryId = savedRecord.id;
     if (email) savePerson(name, email);
+    showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
     clearForm();
     refreshEntryBadge();
     refreshDashboard();
@@ -1812,7 +1733,7 @@ async function saveEntry() {
 
 
 async function refreshEntryBadge() {
-  const all = await dbGetAll();
+  const all = await getAllRecords();
   const today = todayStr();
   const todayCount = all.filter(r => r.date === today).length;
   document.getElementById('entry-count-badge').textContent = todayCount + ' saved today';
@@ -1821,16 +1742,13 @@ async function refreshEntryBadge() {
 // NEW
 
 async function getAllRecords() {
-  const base = getServerApiBase();
-  if (base) {
-    try {
-      const res = await fetch(base + '/api/receipts');
-      if (res.ok) return await res.json();
-    } catch (e) {
-      console.warn('Server fetch failed, falling back to local DB', e);
-    }
+  try {
+    const records = await apiRequest('/api/receipts');
+    return normalizeReceiptList(records);
+  } catch (error) {
+    console.warn('Failed to load receipts from server', error);
+    return [];
   }
-  return dbGetAll();
 }
 
 // ════════════════════════════════════════
@@ -1877,10 +1795,15 @@ function filterTable(q) {
 
 async function deleteEntry(id) {
   if (!confirm('Delete this entry?')) return;
-  await dbDelete(id);
-  showToast('Entry deleted.');
-  refreshDashboard();
-  refreshEntryBadge();
+  try {
+    await apiRequest('/api/receipts/' + id, { method: 'DELETE' });
+    showToast('Entry deleted.');
+    refreshDashboard();
+    refreshEntryBadge();
+  } catch (error) {
+    console.error('Delete failed', error);
+    showToast('Failed to delete entry: ' + (error && error.message ? error.message : error), true);
+  }
 }
 
 function buildReceiptEmail(record) {
@@ -1985,7 +1908,7 @@ async function sendReceiptServer(id) {
     if (!res.ok) throw new Error((data && (data.error || data.message)) || `Send failed (${res.status})`);
     record.sent = true;
     record.sentAt = new Date().toISOString();
-    await dbPut(record);
+    await apiRequest(`/api/receipts/${record.id}`, { method: 'PUT', body: record });
     showToast(`✓ Sent to ${record.email}`);
     refreshDashboard();
   } catch (err) {
