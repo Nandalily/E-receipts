@@ -46,6 +46,8 @@ async function init() {
   await pool.query(sql);
 }
 
+
+
 async function addReceipt(rec) {
   if (!pool) throw new Error('Database not configured');
   const q = `INSERT INTO receipts (name,date,treasurer,email,projects,total,extra_labels,saved_by,saved_at,updated_at,sent,sent_at)
