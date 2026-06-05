@@ -29,6 +29,8 @@ const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
   secure: process.env.SMTP_SECURE === 'true',
+  // Force IPv4 at socket lookup time for SMTP providers that return IPv6 first.
+  family: 4,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
