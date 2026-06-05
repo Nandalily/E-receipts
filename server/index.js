@@ -1,4 +1,15 @@
 require('dotenv').config();
+// Prefer IPv4 DNS results where supported to avoid ENETUNREACH on hosts
+// in environments without IPv6 egress (some hosts/resolvers return IPv6 first).
+try {
+  const dns = require('dns');
+  if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+    console.log('DNS default result order set to ipv4first');
+  }
+} catch (err) {
+  console.warn('Could not set DNS default result order:', err && err.message ? err.message : err);
+}
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');

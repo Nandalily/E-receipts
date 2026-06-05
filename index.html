@@ -16,8 +16,8 @@
 
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js'"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/@emailjs/browser@4/dist/email.min.js'"></script>
 <style>
   :root {
     --navy: #1c473c;
@@ -1916,7 +1916,12 @@ async function sendReceiptServer(id) {
   } catch (err) {
     console.error('Server send failed', err, responseText);
     const msg = (err && err.message) ? err.message : String(err);
-    showToast('Server send failed: ' + msg + (responseText ? ' — ' + responseText : ''), true);
+    // Add user-friendly hint for IPv6 unreachable errors
+    let hint = '';
+    if (msg && msg.includes('ENETUNREACH')) {
+      hint = ' — Network unreachable (IPv6). Ensure the server allows outbound SMTP or prefer IPv4.';
+    }
+    showToast('Server send failed: ' + msg + (responseText ? ' — ' + responseText : '') + hint, true);
   }
 }
 

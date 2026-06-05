@@ -9,7 +9,7 @@ function rowToReceipt(row) {
   return {
     id: row.id,
     name: row.name,
-    date: row.date,
+    date: row.date ? (row.date instanceof Date ? row.date.toISOString().slice(0,10) : String(row.date)) : null,
     treasurer: row.treasurer,
     email: row.email,
     projects: row.projects || {},
