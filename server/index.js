@@ -21,21 +21,46 @@ app.use(express.json({ limit: '1mb' }));
 
 const PORT = process.env.PORT || 3000;
 
-if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
-  console.warn('Warning: SMTP credentials (SMTP_HOST, SMTP_USER, SMTP_PASS, FROM_EMAIL) not set. The server will fail to send emails until these are provided.');
-}
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  // Force IPv4 at socket lookup time for SMTP providers that return IPv6 first.
-  family: 4,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+app.post('/api/send', async (req, res) =>{
+  try {
+    const { to, subject, text, html } = req.body;
+    if (!to || !to.trim()) return res.status(400).json({ error: 'Missing recipient (to)' });{
+      // return res.status(400).json({ error: 'Missing recipient (to)' });
+      const { data, error } = await resend.emails.send({
+        from: process.env.FROM_EMAIL,
+        to: to.trim(),
+        subject: subject || 'Receipt',
+        text: text || undefined,
+        html: html || undefined
+      });
+    }
+      
+      if (error) throw new Error(error.message);
+      res.json({ ok: true, data });
+     } catch (err) {
+        console.error('send error', err);
+         res.status(500).json({ ok: false, error: error.message });
+      }
 });
+
+// if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
+//   console.warn('Warning: SMTP credentials (SMTP_HOST, SMTP_USER, SMTP_PASS, FROM_EMAIL) not set. The server will fail to send emails until these are provided.');
+// }
+
+// const transporter = nodemailer.createTransport({
+//   host: process.env.SMTP_HOST,
+//   port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+//   secure: process.env.SMTP_SECURE === 'true',
+//   // Force IPv4 at socket lookup time for SMTP providers that return IPv6 first.
+//   family: 4,
+//   auth: {
+//     user: process.env.SMTP_USER,
+//     pass: process.env.SMTP_PASS
+//   }
+// });
 
 app.post('/api/send', async (req, res) => {
   try {

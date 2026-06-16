@@ -1177,7 +1177,9 @@
       <div class="page-body">
         <div class="delivery-card">
           <h3>EmailJS Settings</h3>
-          <!-- <p>These values can be saved in the browser, or prefilled in the code through <span id="settings-status">loading...</span>.</p> -->
+          <p style="font-size:0.86rem;color:var(--gray);margin-bottom:12px;">
+            Current delivery setup: <span id="settings-status">loading...</span>
+          </p>
           <div class="delivery-grid">
             <input type="text" id="emailjs-service-id" placeholder="EmailJS Service ID">
             <input type="text" id="emailjs-template-id" placeholder="EmailJS Template ID">
@@ -1476,6 +1478,7 @@ async function initApp() {
   loadEmailDeliverySettings();
   loadServerApiBase();
   applyEmailDeliverySettings();
+  updateSettingsStatus();
   setDefaults();
   refreshDashboard();
   refreshEntryBadge();
@@ -1921,7 +1924,7 @@ async function sendReceiptServer(id) {
     if (msg && msg.includes('ENETUNREACH')) {
       hint = ' — Network unreachable (IPv6). Ensure the server allows outbound SMTP or prefer IPv4.';
     }
-    showToast('Server send failed: ' + msg + (responseText ? ' — ' + responseText : '') + hint, true);
+    showToast('Server send failed (' + base + '): ' + msg + (responseText ? ' — ' + responseText : '') + hint, true);
   }
 }
 
