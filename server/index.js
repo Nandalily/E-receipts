@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+// Prefer IPv4 DNS results to avoid ENETUNREACH on hosts without IPv6 egress
 try {
   const dns = require('dns');
   if (typeof dns.setDefaultResultOrder === 'function') {
@@ -7,12 +8,12 @@ try {
     console.log('DNS default result order set to ipv4first');
   }
 } catch (err) {
-  console.warn('Could not set DNS default result order:', err?.message ?? err);
+  console.warn('Could not set DNS default result order:', err && err.message ? err.message : err);
 }
 
 const express = require('express');
 const cors = require('cors');
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const db = require('./db');
 
 const app = express();
@@ -21,54 +22,56 @@ app.use(express.json({ limit: '1mb' }));
 
 const PORT = process.env.PORT || 3000;
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn('Warning: RESEND_API_KEY not set. Email sending will fail.');
-}
-if (!process.env.FROM_EMAIL) {
-  console.warn('Warning: FROM_EMAIL not set. Email sending will fail.');
+if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
+  console.warn('Warning: SMTP credentials not set. Emails will fail until these are provided.');
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+  secure: process.env.SMTP_SECURE === 'true',
+  family: 4, // Force IPv4 — important on Render
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
-// ── Email send endpoint ──
 app.post('/api/send', async (req, res) => {
   try {
     const { to, subject, text, html } = req.body;
-
     if (!to || typeof to !== 'string' || !to.trim()) {
       return res.status(400).json({ error: 'Missing recipient (to)' });
     }
 
-    if (!process.env.RESEND_API_KEY || !process.env.FROM_EMAIL) {
-      return res.status(500).json({ error: 'Email credentials not configured (RESEND_API_KEY / FROM_EMAIL)' });
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
+      return res.status(500).json({ error: 'SMTP credentials are not configured' });
     }
 
-    const { data, error } = await resend.emails.send({
+    const mailOptions = {
       from: process.env.FROM_EMAIL,
       to: to.trim(),
       subject: subject || 'Receipt',
       text: text || undefined,
       html: html || undefined
-    });
+    };
 
-    if (error) throw new Error(error.message);
-
-    res.json({ ok: true, data });
+    const info = await transporter.sendMail(mailOptions);
+    res.json({ ok: true, info });
   } catch (err) {
     console.error('Send error', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-// ── Health check ──
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
-    emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.FROM_EMAIL)
+    smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.FROM_EMAIL)
   });
 });
 
-// ── Receipts API ──
+// Database-backed receipts API
 app.post('/api/receipts', async (req, res) => {
   if (!db.available) return res.status(501).json({ error: 'Database not configured' });
   try {
