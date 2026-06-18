@@ -1,5 +1,5 @@
 {
   "dependencies": {
-    "nodemailer": "^9.0.1"
+    "@getbrevo/brevo": "^5.0.4"
   }
 }

@@ -1,19 +1,7 @@
 require('dotenv').config();
 
-// Prefer IPv4 DNS results to avoid ENETUNREACH on hosts without IPv6 egress
-try {
-  const dns = require('dns');
-  if (typeof dns.setDefaultResultOrder === 'function') {
-    dns.setDefaultResultOrder('ipv4first');
-    console.log('DNS default result order set to ipv4first');
-  }
-} catch (err) {
-  console.warn('Could not set DNS default result order:', err && err.message ? err.message : err);
-}
-
 const express = require('express');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
 const db = require('./db');
 
 const app = express();
@@ -22,42 +10,49 @@ app.use(express.json({ limit: '1mb' }));
 
 const PORT = process.env.PORT || 3000;
 
-if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
-  console.warn('Warning: SMTP credentials not set. Emails will fail until these are provided.');
+if (!process.env.BREVO_API_KEY || !process.env.FROM_EMAIL) {
+  console.warn('Warning: BREVO_API_KEY or FROM_EMAIL not set. Emails will fail until these are provided.');
 }
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
-  secure: process.env.SMTP_SECURE === 'true',
-  family: 4, // Force IPv4 — important on Render
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
+// Send email via Brevo HTTP API (avoids SMTP port blocking on Render)
+async function sendEmail({ to, subject, html, text }) {
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: {
+        name: process.env.FROM_NAME || 'E-Receipts',
+        email: process.env.FROM_EMAIL
+      },
+      to: [{ email: to.trim() }],
+      subject: subject || 'Receipt',
+      htmlContent: html || undefined,
+      textContent: text || undefined
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || JSON.stringify(data));
+  return data;
+}
 
 app.post('/api/send', async (req, res) => {
   try {
     const { to, subject, text, html } = req.body;
+
     if (!to || typeof to !== 'string' || !to.trim()) {
       return res.status(400).json({ error: 'Missing recipient (to)' });
     }
 
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.FROM_EMAIL) {
-      return res.status(500).json({ error: 'SMTP credentials are not configured' });
+    if (!process.env.BREVO_API_KEY || !process.env.FROM_EMAIL) {
+      return res.status(500).json({ error: 'Email credentials are not configured' });
     }
 
-    const mailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: to.trim(),
-      subject: subject || 'Receipt',
-      text: text || undefined,
-      html: html || undefined
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    res.json({ ok: true, info });
+    const data = await sendEmail({ to, subject, html, text });
+    res.json({ ok: true, data });
   } catch (err) {
     console.error('Send error', err);
     res.status(500).json({ ok: false, error: err.message });
@@ -67,7 +62,7 @@ app.post('/api/send', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
-    smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.FROM_EMAIL)
+    emailConfigured: Boolean(process.env.BREVO_API_KEY && process.env.FROM_EMAIL)
   });
 });
 
