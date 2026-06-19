@@ -461,8 +461,10 @@
     transition: all 0.18s;
     white-space: nowrap;
   }
+  /*
   .btn-inline.email { background: #2d6cdf; color: var(--white); }
   .btn-inline.email:hover { background: #2457b7; }
+  */
   .btn-inline.server { background: #1a7a4a; color: var(--white); }
   .btn-inline.server:hover { background: #155f3b; }
 
@@ -1784,7 +1786,7 @@ async function refreshDashboard() {
       <td>
         <button class="btn-del" title="Edit" onclick="loadEntryForEdit(${r.id})">✎</button>
         <button class="btn-inline server" title="Send via server" onclick="sendReceiptServer(${r.id})">⇧✉</button>
-        <button class="btn-inline email" title="Email receipt" onclick="sendReceiptEmail(${r.id})">✉</button>
+       
         <button class="btn-del" title="Delete" onclick="deleteEntry(${r.id})">🗑</button>
       </td>
     </tr>
@@ -2149,7 +2151,7 @@ async function runReport() {
         <div class="receipt-card-actions">
           <span>Receipt #${r.id} · ${fmtDate(r.date)}</span>
           <button class="btn-inline server" onclick="sendReceiptServer(${r.id})">⇧✉ Send</button>
-          <button class="btn-inline email" onclick="sendReceiptEmail(${r.id})">✉ Send Email</button>
+        
         </div>
       </div>
       <div class="receipt-inner">
@@ -2176,6 +2178,7 @@ async function runReport() {
     </div>`;
   }).join('');
 }
+  // <button class="btn-inline email" onclick="sendReceiptEmail(${r.id})">✉ Send Email</button>
 
 // ════════════════════════════════════════
 //  CSV DOWNLOAD
