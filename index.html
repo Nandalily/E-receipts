@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1c473c">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <title>MUSDAA — E-Receipting System</title>
 <script>
   window.APP_CONFIG = {
@@ -2242,6 +2249,66 @@ function showToast(msg, isError = false) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.className = '', 3200);
 }
+
+
+
+// ════════════════════════════════════════
+//  PWA INSTALL PROMPT
+// ════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW registration failed', e));
+  });
+}
+
+(function setupInstallPrompt() {
+  let deferredPrompt;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  const ua = window.navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const DISMISSED_KEY = 'musdaa_install_dismissed';
+
+  if (isStandalone || sessionStorage.getItem(DISMISSED_KEY)) return;
+
+  function buildBanner(message, actionLabel, onAction) {
+    const banner = document.createElement('div');
+    banner.id = 'install-banner';
+    banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1c473c;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:99999;font-family:"DM Sans",sans-serif;font-size:0.88rem;box-shadow:0 -4px 20px rgba(0,0,0,0.25);flex-wrap:wrap;';
+    banner.innerHTML = `
+      <span style="flex:1;min-width:200px;">${message}</span>
+      <span style="display:flex;gap:8px;">
+        <button id="install-action-btn" style="background:#e8b84b;color:#1c473c;border:none;padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-family:inherit;">${actionLabel}</button>
+        <button id="install-dismiss-btn" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:inherit;">Not now</button>
+      </span>`;
+    document.body.appendChild(banner);
+    document.getElementById('install-action-btn').onclick = onAction;
+    document.getElementById('install-dismiss-btn').onclick = () => {
+      banner.remove();
+      sessionStorage.setItem(DISMISSED_KEY, '1');
+    };
+  }
+
+  if (isIOS && isSafari) {
+    buildBanner('Install MUSDAA: tap Share, then "Add to Home Screen"', 'Got it', () => {
+      document.getElementById('install-banner').remove();
+      sessionStorage.setItem(DISMISSED_KEY, '1');
+    });
+  } else {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      buildBanner('Install the MUSDAA app for quicker access', 'Install', async () => {
+        document.getElementById('install-banner').remove();
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('Install prompt outcome:', outcome);
+        deferredPrompt = null;
+      });
+    });
+  }
+})();
 </script>
 </body>
 </html>
