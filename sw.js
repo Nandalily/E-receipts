@@ -2,7 +2,7 @@
 // Just enough to satisfy PWA installability requirements.
 // Extend the fetch handler later if you want offline caching.
 
-const CACHE_NAME = 'musdaa-shell-v1';
+const CACHE_NAME = 'musdaa-shell-v2';
 const APP_SHELL = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', (event) => {

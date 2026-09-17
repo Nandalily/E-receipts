@@ -1475,9 +1475,6 @@ async function lookupPeople(prefix) {
     const people = await apiRequest('/api/people?q=' + encodeURIComponent(prefix));
     const list = Array.isArray(people) ? people : [];
     renderNameSuggestions(list);
-    if (list.length === 1 && list[0].name.toLowerCase().startsWith(prefix.toLowerCase())) {
-      applyPersonDetails(list[0]);
-    }
     return list;
   } catch (error) {
     const local = loadPersons();
@@ -1648,11 +1645,12 @@ function doLogout() {
 // ════════════════════════════════════════
 function normalizeReceipt(record) {
   if (!record) return null;
+  const extraLabels = record.extraLabels || record.extra_labels || {};
   return {
     ...record,
-    contact: record.contact || '',
-    fellowship: record.fellowship || '',
-    extraLabels: record.extraLabels || record.extra_labels || {},
+    contact: record.contact || extraLabels.contact || '',
+    fellowship: record.fellowship || extraLabels.fellowship || '',
+    extraLabels,
     savedAt: record.savedAt || record.saved_at || '',
     savedBy: record.savedBy || record.saved_by || '',
     updatedAt: record.updatedAt || record.updated_at || '',
@@ -1990,8 +1988,8 @@ async function loadEntryForEdit(id) {
   document.getElementById('f-date').value = record.date || todayStr();
   document.getElementById('f-treasurer').value = record.treasurer || '';
   document.getElementById('f-email').value = record.email || '';
-  document.getElementById('f-contact').value = record.contact || '';
-  document.getElementById('f-fellowship').value = record.fellowship || '';
+  document.getElementById('f-contact').value = record.contact || record.extraLabels?.contact || '';
+  document.getElementById('f-fellowship').value = record.fellowship || record.extraLabels?.fellowship || '';
 
   AMOUNT_FIELD_IDS.forEach(id => {
     const el = document.getElementById(id);
@@ -2048,7 +2046,11 @@ async function saveEntry() {
     sent: prev?.sent || false,
     sentAt: prev?.sentAt || undefined
   };
-  record.extraLabels = saveExtraLabels();
+  record.extraLabels = {
+    ...saveExtraLabels(),
+    contact,
+    fellowship
+  };
 
   Object.keys(record).forEach(k => { if (record[k] === undefined) delete record[k]; });
 
@@ -2389,7 +2391,12 @@ async function runReport() {
 
   if (type === 'day') filtered = all.filter(r => r.date === from);
   else if (type === 'range') filtered = all.filter(r => r.date >= from && r.date <= to);
-  else if (type === 'fellowship') filtered = all.filter(r => (r.fellowship || '') === fellowship);
+  else if (type === 'fellowship') {
+    filtered = all.filter(r => {
+      const value = (r.fellowship || r.extraLabels?.fellowship || '').trim().toLowerCase();
+      return value && value === String(fellowship || '').trim().toLowerCase();
+    });
+  }
   else if (type === 'project') filtered = all.filter(r => recordMatchesProject(r, selectedProject));
   else if (type === 'person') {
     if (!personQuery) {
