@@ -90,6 +90,18 @@ app.get('/api/receipts', async (req, res) => {
   }
 });
 
+app.get('/api/people', async (req, res) => {
+  if (!db.available) return res.status(501).json({ error: 'Database not configured' });
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    const rows = q.trim().length >= 3 ? await db.searchPeople(q) : await db.listPeople();
+    res.json(rows);
+  } catch (err) {
+    console.error('People lookup error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/receipts/:id', async (req, res) => {
   if (!db.available) return res.status(501).json({ error: 'Database not configured' });
   try {

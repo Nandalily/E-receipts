@@ -12,6 +12,8 @@ function rowToReceipt(row) {
     date: row.date ? (row.date instanceof Date ? row.date.toISOString().slice(0,10) : String(row.date)) : null,
     treasurer: row.treasurer,
     email: row.email,
+    contact: row.contact || '',
+    fellowship: row.fellowship || '',
     projects: row.projects || {},
     total: Number(row.total || 0),
     extraLabels: row.extra_labels || {},
@@ -25,7 +27,6 @@ function rowToReceipt(row) {
 
 async function init() {
   if (!pool) return;
-  // Create receipts table if it doesn't exist
   const sql = `
     CREATE TABLE IF NOT EXISTS receipts (
       id SERIAL PRIMARY KEY,
@@ -33,6 +34,8 @@ async function init() {
       date DATE NOT NULL,
       treasurer TEXT,
       email TEXT,
+      contact TEXT,
+      fellowship TEXT,
       projects JSONB NOT NULL,
       total NUMERIC NOT NULL,
       extra_labels JSONB,
@@ -42,21 +45,23 @@ async function init() {
       sent BOOLEAN NOT NULL DEFAULT false,
       sent_at TIMESTAMPTZ
     );
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS contact TEXT;
+    ALTER TABLE receipts ADD COLUMN IF NOT EXISTS fellowship TEXT;
   `;
   await pool.query(sql);
 }
 
-
-
 async function addReceipt(rec) {
   if (!pool) throw new Error('Database not configured');
-  const q = `INSERT INTO receipts (name,date,treasurer,email,projects,total,extra_labels,saved_by,saved_at,updated_at,sent,sent_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`;
+  const q = `INSERT INTO receipts (name,date,treasurer,email,contact,fellowship,projects,total,extra_labels,saved_by,saved_at,updated_at,sent,sent_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`;
   const vals = [
     rec.name,
     rec.date,
     rec.treasurer || null,
     rec.email || null,
+    rec.contact || null,
+    rec.fellowship || null,
     rec.projects || {},
     rec.total || 0,
     rec.extraLabels || {},
@@ -73,11 +78,11 @@ async function addReceipt(rec) {
 async function getReceipts(from, to) {
   if (!pool) throw new Error('Database not configured');
   if (from && to) {
-    const q = 'SELECT * FROM receipts WHERE date BETWEEN $1 AND $2 ORDER BY date DESC';
+    const q = 'SELECT * FROM receipts WHERE date BETWEEN $1 AND $2 ORDER BY date DESC, id DESC';
     const { rows } = await pool.query(q, [from, to]);
     return rows.map(rowToReceipt);
   }
-  const { rows } = await pool.query('SELECT * FROM receipts ORDER BY id DESC LIMIT 1000');
+  const { rows } = await pool.query('SELECT * FROM receipts ORDER BY id DESC');
   return rows.map(rowToReceipt);
 }
 
@@ -89,12 +94,14 @@ async function getReceiptById(id) {
 
 async function updateReceipt(id, rec) {
   if (!pool) throw new Error('Database not configured');
-  const q = `UPDATE receipts SET name=$1,date=$2,treasurer=$3,email=$4,projects=$5,total=$6,extra_labels=$7,updated_at=$8,sent=$9,sent_at=$10 WHERE id=$11 RETURNING *`;
+  const q = `UPDATE receipts SET name=$1,date=$2,treasurer=$3,email=$4,contact=$5,fellowship=$6,projects=$7,total=$8,extra_labels=$9,updated_at=$10,sent=$11,sent_at=$12 WHERE id=$13 RETURNING *`;
   const vals = [
     rec.name,
     rec.date,
     rec.treasurer || null,
     rec.email || null,
+    rec.contact || null,
+    rec.fellowship || null,
     rec.projects || {},
     rec.total || 0,
     rec.extraLabels || {},
@@ -112,6 +119,45 @@ async function deleteReceipt(id) {
   await pool.query('DELETE FROM receipts WHERE id = $1', [id]);
 }
 
+async function searchPeople(q) {
+  if (!pool) throw new Error('Database not configured');
+  const term = String(q || '').trim();
+  if (term.length < 3) return [];
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (LOWER(TRIM(name)))
+        name, email, contact, fellowship
+     FROM receipts
+     WHERE name ILIKE $1
+     ORDER BY LOWER(TRIM(name)), id DESC
+     LIMIT 15`,
+    [term + '%']
+  );
+  return rows.map(row => ({
+    name: row.name || '',
+    email: row.email || '',
+    contact: row.contact || '',
+    fellowship: row.fellowship || ''
+  }));
+}
+
+async function listPeople() {
+  if (!pool) throw new Error('Database not configured');
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ON (LOWER(TRIM(name)))
+        name, email, contact, fellowship
+     FROM receipts
+     WHERE name IS NOT NULL AND TRIM(name) <> ''
+     ORDER BY LOWER(TRIM(name)), id DESC
+     LIMIT 500`
+  );
+  return rows.map(row => ({
+    name: row.name || '',
+    email: row.email || '',
+    contact: row.contact || '',
+    fellowship: row.fellowship || ''
+  }));
+}
+
 module.exports = {
   available: Boolean(pool),
   init,
@@ -119,5 +165,7 @@ module.exports = {
   getReceipts,
   getReceiptById,
   updateReceipt,
-  deleteReceipt
+  deleteReceipt,
+  searchPeople,
+  listPeople
 };

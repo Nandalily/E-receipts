@@ -25,6 +25,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/chart.js@4.4.0/dist/chart.umd.min.js'"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/@emailjs/browser@4/dist/email.min.js'"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root {
     --navy: #1c473c;
@@ -292,7 +293,7 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  .form-group input {
+  .form-group input, .form-group select {
     padding: 11px 14px;
     border: 1.5px solid var(--border);
     border-radius: 8px;
@@ -302,8 +303,54 @@
     background: var(--cream);
     outline: none;
     transition: border-color 0.2s, background 0.2s;
+    width: 100%;
   }
-  .form-group input:focus { border-color: var(--gold); background: var(--white); }
+  .form-group input:focus, .form-group select:focus { border-color: var(--gold); background: var(--white); }
+  .section-label {
+    margin: 8px 0 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--navy2);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .name-suggest-wrap { position: relative; }
+  .name-suggestions {
+    display: none;
+    position: absolute;
+    left: 0; right: 0; top: calc(100% + 4px);
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 20;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .name-suggestions.show { display: block; }
+  .name-suggestion {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--light);
+  }
+  .name-suggestion:last-child { border-bottom: none; }
+  .name-suggestion:hover, .name-suggestion.active { background: #f4f8ff; }
+  .name-suggestion strong { display: block; font-size: 0.9rem; }
+  .name-suggestion small { color: var(--gray); font-size: 0.78rem; }
+  .other-items-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .other-item-card {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    background: var(--cream);
+  }
+  .other-item-card .form-group { margin-bottom: 10px; }
+  .other-item-card .form-group:last-child { margin-bottom: 0; }
   .projects-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -799,6 +846,11 @@
     .totals-card { border: 2px solid #999 !important; box-shadow: none !important; }
   }
 
+  @media (max-width: 900px) {
+    .form-row, .other-items-grid, .projects-grid, .totals-grid { grid-template-columns: 1fr; }
+    .project-col:first-child, .totals-col:first-child { border-right: none; }
+  }
+
   /* scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -928,9 +980,11 @@
                 <tr>
                   <th>#</th>
                   <th>Name</th>
+                  <th>Fellowship</th>
                   <th>Date</th>
                   <th>Treasurer</th>
                   <th>Email</th>
+                  <th>Contact</th>
                   <th>Total (UGX)</th>
                   <th>Actions</th>
                 </tr>
@@ -960,7 +1014,10 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Full Name *</label>
-                <input type="text" id="f-name" list="persons-list" placeholder="e.g. Lilian Nankunda" autocomplete="off">
+                <div class="name-suggest-wrap">
+                  <input type="text" id="f-name" list="persons-list" placeholder="Type at least 3 letters to look up" autocomplete="off">
+                  <div id="name-suggestions" class="name-suggestions"></div>
+                </div>
                 <datalist id="persons-list"></datalist>
               </div>
               <div class="form-group">
@@ -970,18 +1027,37 @@
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Treasurer</label>
-                <input type="text" id="f-treasurer" placeholder="Treasurer name">
-              </div>
-              <div class="form-group">
                 <label>Email</label>
                 <input type="email" id="f-email" placeholder="nankunda@example.com" autocomplete="email">
               </div>
+              <div class="form-group">
+                <label>Contact</label>
+                <input type="text" id="f-contact" placeholder="0700 000 000" autocomplete="tel">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fellowship</label>
+                <select id="f-fellowship">
+                  <option value="">Select fellowship</option>
+                  <option value="UH-Mitchellex">UH-Mitchellex</option>
+                  <option value="Lumbox">Lumbox</option>
+                  <option value="Afrostone">Afrostone</option>
+                  <option value="Nkrucote">Nkrucote</option>
+                  <option value="K.K">K.K</option>
+                  <option value="Kikoni">Kikoni</option>
+                  <option value="Associate">Associate</option>
+                  <option value="Visitor">Visitor</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Treasurer</label>
+                <input type="text" id="f-treasurer" placeholder="Treasurer name">
+              </div>
             </div>
 
-            <div style="margin-bottom:10px;font-size:0.8rem;font-weight:600;color:var(--navy2);letter-spacing:0.05em;text-transform:uppercase;">Project Amounts (UGX)</div>
+            <div class="section-label">Project Amounts (UGX)</div>
             <div class="projects-grid">
-              <!-- LEFT COLUMN -->
               <div class="project-col">
                 <div class="project-col-header">
                   <span>Project</span><span>Amount</span>
@@ -990,22 +1066,61 @@
                 <div class="project-row"><span class="project-name">Kayunga Project (SAHK)</span><div class="project-amount"><input type="number" min="0" id="p-kayunga" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Out Reach</span><div class="project-amount"><input type="number" min="0" id="p-outreach" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Maternity Center</span><div class="project-amount"><input type="number" min="0" id="p-maternity" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><span class="project-name">Note Books</span><div class="project-amount"><input type="number" min="0" id="p-notebooks" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Orientation</span><div class="project-amount"><input type="number" min="0" id="p-orientation" placeholder="0" oninput="calcTotal()"></div></div>
-              </div>
-              <!-- RIGHT COLUMN -->
-              <div class="project-col">
-                <div class="project-col-header">
-                  <span>Project</span><span>Amount</span>
-                </div>
                 <div class="project-row"><span class="project-name">Social Day</span><div class="project-amount"><input type="number" min="0" id="p-social" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Umbrellas</span><div class="project-amount"><input type="number" min="0" id="p-umbrellas" placeholder="0" oninput="calcTotal()"></div></div>
                 <div class="project-row"><span class="project-name">Bibles</span><div class="project-amount"><input type="number" min="0" id="p-bibles" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><input class="project-name-input" id="p-extra1-label" placeholder="other" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra1" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><input class="project-name-input" id="p-extra2-label" placeholder="other" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra2" placeholder="0" oninput="calcTotal()"></div></div>
-                <div class="project-row"><input class="project-name-input" id="p-extra3-label" placeholder="other" oninput="saveExtraLabels()" value=""><div class="project-amount"><input type="number" min="0" id="p-extra3" placeholder="0" oninput="calcTotal()"></div></div>
+              </div>
+              <div class="project-col">
+                <div class="project-col-header">
+                  <span>Item</span><span>Amount</span>
+                </div>
+                <div class="project-row"><span class="project-name">T Shirts</span><div class="project-amount"><input type="number" min="0" id="p-tshirts" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Capes</span><div class="project-amount"><input type="number" min="0" id="p-capes" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Pins</span><div class="project-amount"><input type="number" min="0" id="p-pins" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Liquid Soap</span><div class="project-amount"><input type="number" min="0" id="p-liquid-soap" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Bottles</span><div class="project-amount"><input type="number" min="0" id="p-bottles" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Key Holders</span><div class="project-amount"><input type="number" min="0" id="p-key-holders" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Note Books</span><div class="project-amount"><input type="number" min="0" id="p-notebooks" placeholder="0" oninput="calcTotal()"></div></div>
+                <div class="project-row"><span class="project-name">Ties</span><div class="project-amount"><input type="number" min="0" id="p-ties" placeholder="0" oninput="calcTotal()"></div></div>
               </div>
             </div>
+
+            <div class="section-label">Other items</div>
+            <div class="other-items-grid">
+              <div class="other-item-card">
+                <div class="form-group">
+                  <label>Other item</label>
+                  <select id="p-other-item-label" oninput="saveExtraLabels()">
+                    <option value="">Select item</option>
+                    <option value="lunch">lunch</option>
+                    <option value="pa">pa</option>
+                    <option value="awo">awo</option>
+                    <option value="amo">amo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Amount (UGX)</label>
+                  <input type="number" min="0" id="p-other-item" placeholder="0" oninput="calcTotal()">
+                </div>
+              </div>
+              <div class="other-item-card">
+                <div class="form-group">
+                  <label>Specific item</label>
+                  <input type="text" id="p-custom-item-label" placeholder="Enter the specific item" oninput="saveExtraLabels()">
+                </div>
+                <div class="form-group">
+                  <label>Amount (UGX)</label>
+                  <input type="number" min="0" id="p-custom-item" placeholder="0" oninput="calcTotal()">
+                </div>
+              </div>
+            </div>
+            <input type="hidden" id="p-extra1-label" value="">
+            <input type="hidden" id="p-extra2-label" value="">
+            <input type="hidden" id="p-extra3-label" value="">
+            <input type="hidden" id="p-extra1" value="">
+            <input type="hidden" id="p-extra2" value="">
+            <input type="hidden" id="p-extra3" value="">
 
             <div class="total-row">
               <div class="label">Total Amount</div>
@@ -1043,26 +1158,46 @@
         <div class="report-controls">
           <div class="form-group">
             <label>Report Type</label>
-            <select id="report-type" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;" onchange="toggleDateInputs()">
+            <select id="report-type" onchange="toggleDateInputs()">
+              <option value="all">All Records</option>
               <option value="day">Single Day</option>
               <option value="range">Date Range</option>
-              <option value="all">All Records</option>
-              <option value="project">Project</option>
+              <option value="fellowship">By Fellowship</option>
+              <option value="project">By Project / Item</option>
+              <option value="person">By Person</option>
             </select>
           </div>
-          <div class="form-group" id="date-from-group">
+          <div class="form-group" id="date-from-group" style="display:none;">
             <label>Date</label>
-            <input type="date" id="report-date-from" class="form-group input" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;">
+            <input type="date" id="report-date-from">
           </div>
           <div class="form-group" id="date-to-group" style="display:none;">
             <label>To Date</label>
-            <input type="date" id="report-date-to" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;">
+            <input type="date" id="report-date-to">
+          </div>
+          <div class="form-group" id="fellowship-group" style="display:none;">
+            <label>Fellowship</label>
+            <select id="report-fellowship">
+              <option value="UH-Mitchellex">UH-Mitchellex</option>
+              <option value="Lumbox">Lumbox</option>
+              <option value="Afrostone">Afrostone</option>
+              <option value="Nkrucote">Nkrucote</option>
+              <option value="K.K">K.K</option>
+              <option value="Kikoni">Kikoni</option>
+              <option value="Associate">Associate</option>
+              <option value="Visitor">Visitor</option>
+            </select>
           </div>
           <div class="form-group" id="project-group" style="display:none;">
-            <label>Project</label>
-            <select id="report-project" style="padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.93rem;background:var(--cream);color:var(--navy);outline:none;"></select>
+            <label>Project / Item</label>
+            <select id="report-project"></select>
           </div>
-          <button class="btn-run" onclick="runReport()">▶ Run Report</button>
+          <div class="form-group" id="person-group" style="display:none;">
+            <label>Person</label>
+            <input type="text" id="report-person" list="persons-list" placeholder="Search one person">
+          </div>
+          <button class="btn-run" onclick="runReport()">Run Report</button>
+          <button class="btn-action gold" type="button" onclick="downloadAllExcel()">Download All Excel</button>
         </div>
 
         <div class="report-controls" style="margin-top:14px;">
@@ -1084,7 +1219,8 @@
         <div id="report-output" style="display:none;">
           <div class="report-actions">
             <button class="btn-action gold" onclick="window.print()"> Print / Save PDF</button>
-            <button class="btn-action" onclick="downloadCSV()">⬇Download CSV</button>
+            <button class="btn-action" onclick="downloadExcel()">Download Excel</button>
+            <button class="btn-action" onclick="downloadCSV()">Download CSV</button>
           </div>
 
           <div class="report-summary">
@@ -1107,31 +1243,12 @@
           <!-- PROJECT TOTALS SUMMARY TABLE -->
           <div class="totals-card">
             <div class="totals-card-header">
-              <h3>&#128202; Project Totals Summary</h3>
+              <h3>Project Totals Summary</h3>
               <span class="totals-badge">Aggregated across all entries in this report</span>
             </div>
-            <div class="totals-grid">
-              <div class="totals-col">
-                <div class="totals-col-head"><span>Project</span><span>Total (UGX)</span></div>
-                <div class="totals-row" id="tot-p-youth-summit"><span>Youth Summit</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-kayunga"><span>Kayunga Project (SAHK)</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-outreach"><span>Out Reach</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-maternity"><span>Maternity Center</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-notebooks"><span>Note Books</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-orientation"><span>Orientation</span><span>&#8212;</span></div>
-              </div>
-              <div class="totals-col">
-                <div class="totals-col-head"><span>Project</span><span>Total (UGX)</span></div>
-                <div class="totals-row" id="tot-p-social"><span>Social Day</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-umbrellas"><span>Umbrellas</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-bibles"><span>Bibles</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-extra1"><span id="tot-p-extra1-label">other</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-extra2"><span id="tot-p-extra2-label">other</span><span>&#8212;</span></div>
-                <div class="totals-row" id="tot-p-extra3"><span id="tot-p-extra3-label">other</span><span>&#8212;</span></div>
-              </div>
-            </div>
+            <div class="totals-grid" id="totals-grid"></div>
             <div class="totals-footer">
-              <div class="tf-label">Grand Total &#8212; All Projects Combined</div>
+              <div class="tf-label">Grand Total — All Projects Combined</div>
               <div class="tf-amount" id="totals-grand">UGX 0</div>
             </div>
           </div>
@@ -1255,10 +1372,14 @@ function loadExtraLabels() {
   try {
     const raw = localStorage.getItem(EXTRA_LABELS_KEY) || '{}';
     const obj = JSON.parse(raw);
-    // set inputs if present
-    document.getElementById('p-extra1-label').value = obj['p-extra1'] || 'other';
-    document.getElementById('p-extra2-label').value = obj['p-extra2'] || 'other';
-    document.getElementById('p-extra3-label').value = obj['p-extra3'] || 'other';
+    const otherEl = document.getElementById('p-other-item-label');
+    const customEl = document.getElementById('p-custom-item-label');
+    if (otherEl) otherEl.value = obj['p-other-item'] || '';
+    if (customEl) customEl.value = obj['p-custom-item'] || '';
+    ['p-extra1', 'p-extra2', 'p-extra3'].forEach(id => {
+      const el = document.getElementById(id + '-label');
+      if (el) el.value = obj[id] || '';
+    });
     return obj;
   } catch (e) {
     return {};
@@ -1267,27 +1388,36 @@ function loadExtraLabels() {
 
 function saveExtraLabels() {
   const obj = {
-    'p-extra1': document.getElementById('p-extra1-label').value.trim() || 'other',
-    'p-extra2': document.getElementById('p-extra2-label').value.trim() || 'other',
-    'p-extra3': document.getElementById('p-extra3-label').value.trim() || 'other'
+    'p-other-item': (document.getElementById('p-other-item-label')?.value || '').trim(),
+    'p-custom-item': (document.getElementById('p-custom-item-label')?.value || '').trim(),
+    'p-extra1': (document.getElementById('p-extra1-label')?.value || '').trim(),
+    'p-extra2': (document.getElementById('p-extra2-label')?.value || '').trim(),
+    'p-extra3': (document.getElementById('p-extra3-label')?.value || '').trim()
   };
   localStorage.setItem(EXTRA_LABELS_KEY, JSON.stringify(obj));
   populateReportProjectOptions();
   return obj;
 }
 
-function savePerson(name, email) {
+function savePerson(name, details) {
   if (!name) return;
   const obj = loadPersons();
-  if (email) obj[name] = email;
-  else if (!obj[name]) obj[name] = '';
+  const prev = typeof obj[name] === 'object' ? obj[name] : { email: obj[name] || '' };
+  obj[name] = {
+    email: details.email || prev.email || '',
+    contact: details.contact || prev.contact || '',
+    fellowship: details.fellowship || prev.fellowship || ''
+  };
   localStorage.setItem(PERSONS_KEY, JSON.stringify(obj));
   updatePersonsDatalist(obj);
 }
 
 function getPersonByName(name) {
   const obj = loadPersons();
-  return obj[name] || null;
+  const value = obj[name];
+  if (value == null) return null;
+  if (typeof value === 'string') return { email: value, contact: '', fellowship: '' };
+  return value;
 }
 
 function updatePersonsDatalist(obj) {
@@ -1299,6 +1429,83 @@ function updatePersonsDatalist(obj) {
     opt.value = n;
     list.appendChild(opt);
   });
+}
+
+function applyPersonDetails(person) {
+  if (!person) return;
+  if (person.name) document.getElementById('f-name').value = person.name;
+  document.getElementById('f-email').value = person.email || '';
+  document.getElementById('f-contact').value = person.contact || '';
+  document.getElementById('f-fellowship').value = person.fellowship || '';
+}
+
+function hideNameSuggestions() {
+  const box = document.getElementById('name-suggestions');
+  if (box) {
+    box.classList.remove('show');
+    box.innerHTML = '';
+  }
+}
+
+function renderNameSuggestions(people) {
+  const box = document.getElementById('name-suggestions');
+  if (!box) return;
+  if (!people.length) {
+    hideNameSuggestions();
+    return;
+  }
+  box.innerHTML = people.map((person, index) => `
+    <div class="name-suggestion${index === 0 ? ' active' : ''}" data-index="${index}">
+      <strong>${escHtml(person.name)}</strong>
+      <small>${escHtml([person.fellowship, person.contact, person.email].filter(Boolean).join(' · ') || 'Saved person')}</small>
+    </div>
+  `).join('');
+  box.classList.add('show');
+  box.querySelectorAll('.name-suggestion').forEach(el => {
+    el.addEventListener('mousedown', evt => {
+      evt.preventDefault();
+      applyPersonDetails(people[Number(el.dataset.index)]);
+      hideNameSuggestions();
+    });
+  });
+}
+
+async function lookupPeople(prefix) {
+  try {
+    const people = await apiRequest('/api/people?q=' + encodeURIComponent(prefix));
+    const list = Array.isArray(people) ? people : [];
+    renderNameSuggestions(list);
+    if (list.length === 1 && list[0].name.toLowerCase().startsWith(prefix.toLowerCase())) {
+      applyPersonDetails(list[0]);
+    }
+    return list;
+  } catch (error) {
+    const local = loadPersons();
+    const matches = Object.keys(local)
+      .filter(name => name.toLowerCase().startsWith(prefix.toLowerCase()))
+      .map(name => ({ name, ...getPersonByName(name) }));
+    renderNameSuggestions(matches);
+    return matches;
+  }
+}
+
+async function refreshPeopleDirectory() {
+  try {
+    const people = await apiRequest('/api/people');
+    const obj = {};
+    (people || []).forEach(person => {
+      if (!person || !person.name) return;
+      obj[person.name] = {
+        email: person.email || '',
+        contact: person.contact || '',
+        fellowship: person.fellowship || ''
+      };
+    });
+    localStorage.setItem(PERSONS_KEY, JSON.stringify(obj));
+    updatePersonsDatalist(obj);
+  } catch (error) {
+    loadPersons();
+  }
 }
 
 function getEmailDeliverySettings() {
@@ -1443,6 +1650,8 @@ function normalizeReceipt(record) {
   if (!record) return null;
   return {
     ...record,
+    contact: record.contact || '',
+    fellowship: record.fellowship || '',
     extraLabels: record.extraLabels || record.extra_labels || {},
     savedAt: record.savedAt || record.saved_at || '',
     savedBy: record.savedBy || record.saved_by || '',
@@ -1491,17 +1700,29 @@ async function initApp() {
   setDefaults();
   refreshDashboard();
   refreshEntryBadge();
-  loadPersons();
+  await refreshPeopleDirectory();
   loadExtraLabels();
+  setupNameLookup();
+}
 
+let nameLookupTimer = null;
+function setupNameLookup() {
   const nameInput = document.getElementById('f-name');
-  if (nameInput) {
-    nameInput.addEventListener('input', e => {
-      const val = e.target.value.trim();
-      const email = getPersonByName(val);
-      if (email !== null && email !== undefined) document.getElementById('f-email').value = email;
-    });
-  }
+  if (!nameInput || nameInput.dataset.lookupReady) return;
+  nameInput.dataset.lookupReady = '1';
+  nameInput.addEventListener('input', e => {
+    const val = e.target.value.trim();
+    clearTimeout(nameLookupTimer);
+    if (val.length < 3) {
+      hideNameSuggestions();
+      return;
+    }
+    nameLookupTimer = setTimeout(() => lookupPeople(val), 180);
+  });
+  nameInput.addEventListener('blur', () => setTimeout(hideNameSuggestions, 180));
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') hideNameSuggestions();
+  });
 }
 
 // ════════════════════════════════════════
@@ -1514,6 +1735,9 @@ function showPage(id) {
   document.getElementById('nav-' + id).classList.add('active');
   if (id === 'dashboard') refreshDashboard();
   if (id === 'entry') refreshEntryBadge();
+  if (id === 'reports') {
+    getAllRecords().then(populateReportProjectOptions);
+  }
   if (id === 'settings') {
     loadEmailDeliverySettings();
     loadServerApiBase();
@@ -1529,28 +1753,130 @@ const PROJECTS = [
   { id: 'p-kayunga',       label: 'Kayunga Project(SAHK)',col: 0 },
   { id: 'p-outreach',      label: 'Out Reach',            col: 0 },
   { id: 'p-maternity',     label: 'Maternity Center',     col: 0 },
-  { id: 'p-notebooks',     label: 'Note Books',           col: 0 },
   { id: 'p-orientation',   label: 'Orientation',          col: 0 },
-  { id: 'p-social',        label: 'Social Day',           col: 1 },
-  { id: 'p-umbrellas',     label: 'Umbrellas',            col: 1 },
-  { id: 'p-bibles',        label: 'Bibles',               col: 1 },
+  { id: 'p-social',        label: 'Social Day',           col: 0 },
+  { id: 'p-umbrellas',     label: 'Umbrellas',            col: 0 },
+  { id: 'p-bibles',        label: 'Bibles',               col: 0 },
+  { id: 'p-tshirts',       label: 'T Shirts',             col: 1 },
+  { id: 'p-capes',         label: 'Capes',                col: 1 },
+  { id: 'p-pins',          label: 'Pins',                 col: 1 },
+  { id: 'p-liquid-soap',   label: 'Liquid Soap',          col: 1 },
+  { id: 'p-bottles',       label: 'Bottles',              col: 1 },
+  { id: 'p-key-holders',   label: 'Key Holders',          col: 1 },
+  { id: 'p-notebooks',     label: 'Note Books',           col: 1 },
+  { id: 'p-ties',          label: 'Ties',                 col: 1 }
 ];
 
 const EXTRA_PROJECTS = [
+  { id: 'p-other-item', defaultLabel: 'Other item', col: 1 },
+  { id: 'p-custom-item', defaultLabel: 'Specific item', col: 1 },
   { id: 'p-extra1', defaultLabel: 'other', col: 1 },
   { id: 'p-extra2', defaultLabel: 'other', col: 1 },
   { id: 'p-extra3', defaultLabel: 'other', col: 1 }
 ];
 
+const AMOUNT_FIELD_IDS = [...PROJECTS.map(p => p.id), 'p-other-item', 'p-custom-item', 'p-extra1', 'p-extra2', 'p-extra3'];
+
 function getExtraProjectDefs(labels) {
   return EXTRA_PROJECTS.map(extra => {
-    const label = (labels && labels[extra.id] ? String(labels[extra.id]).trim() : '') || extra.defaultLabel;
-    return { id: extra.id, label, col: extra.col };
+    const custom = labels && labels[extra.id] ? String(labels[extra.id]).trim() : '';
+    const label = custom || extra.defaultLabel;
+    return { id: extra.id, label, col: extra.col, named: Boolean(custom) };
   });
 }
 
-function getReportProjectDefs() {
-  return [...PROJECTS, ...getExtraProjectDefs(loadExtraLabels())];
+function getRecordLineItems(record) {
+  const labels = record.extraLabels || {};
+  const extras = getExtraProjectDefs(labels).filter(item => {
+    const amount = record.projects?.[item.id] || 0;
+    return amount > 0 || item.named;
+  });
+  return [...PROJECTS, ...extras];
+}
+
+function getReportProjectDefs(records) {
+  const defs = [...PROJECTS];
+  const seen = new Set(defs.map(p => p.id));
+  const otherOptions = ['lunch', 'pa', 'awo', 'amo'];
+  otherOptions.forEach(name => {
+    const key = 'other:' + name;
+    defs.push({ id: key, label: name, kind: 'other', otherName: name });
+    seen.add(key);
+  });
+  (records || []).forEach(record => {
+    const labels = record.extraLabels || {};
+    const customName = String(labels['p-custom-item'] || '').trim();
+    if (customName) {
+      const key = 'custom:' + customName.toLowerCase();
+      if (!seen.has(key)) {
+        defs.push({ id: key, label: customName, kind: 'custom', customName });
+        seen.add(key);
+      }
+    }
+    ['p-extra1', 'p-extra2', 'p-extra3'].forEach(id => {
+      const label = String(labels[id] || '').trim();
+      const amount = record.projects?.[id] || 0;
+      if (label && amount > 0) {
+        const key = 'legacy:' + label.toLowerCase();
+        if (!seen.has(key)) {
+          defs.push({ id: key, label, kind: 'legacy', extraId: id, extraLabel: label });
+          seen.add(key);
+        }
+      }
+    });
+  });
+  return defs;
+}
+
+function recordMatchesProject(record, def) {
+  if (!def) return false;
+  if (def.kind === 'other') {
+    const label = String((record.extraLabels || {})['p-other-item'] || '').trim().toLowerCase();
+    return label === def.otherName && (record.projects?.['p-other-item'] || 0) > 0;
+  }
+  if (def.kind === 'custom') {
+    const label = String((record.extraLabels || {})['p-custom-item'] || '').trim().toLowerCase();
+    return label === def.customName.toLowerCase() && (record.projects?.['p-custom-item'] || 0) > 0;
+  }
+  if (def.kind === 'legacy') {
+    const labels = record.extraLabels || {};
+    return ['p-extra1', 'p-extra2', 'p-extra3'].some(id => {
+      const name = String(labels[id] || '').trim().toLowerCase();
+      return name === def.extraLabel.toLowerCase() && (record.projects?.[id] || 0) > 0;
+    });
+  }
+  return (record.projects?.[def.id] || 0) > 0;
+}
+
+function recordProjectAmount(record, def) {
+  if (!def) return 0;
+  if (def.kind === 'other') {
+    const label = String((record.extraLabels || {})['p-other-item'] || '').trim().toLowerCase();
+    return label === def.otherName ? (record.projects?.['p-other-item'] || 0) : 0;
+  }
+  if (def.kind === 'custom') {
+    const label = String((record.extraLabels || {})['p-custom-item'] || '').trim().toLowerCase();
+    return label === def.customName.toLowerCase() ? (record.projects?.['p-custom-item'] || 0) : 0;
+  }
+  if (def.kind === 'legacy') {
+    const labels = record.extraLabels || {};
+    return ['p-extra1', 'p-extra2', 'p-extra3'].reduce((sum, id) => {
+      const name = String(labels[id] || '').trim().toLowerCase();
+      return name === def.extraLabel.toLowerCase() ? sum + (record.projects?.[id] || 0) : sum;
+    }, 0);
+  }
+  return record.projects?.[def.id] || 0;
+}
+
+function populateReportProjectOptions(records) {
+  const select = document.getElementById('report-project');
+  if (!select) return;
+  const current = select.value;
+  const reportProjects = getReportProjectDefs(records);
+  select.innerHTML = reportProjects.map(project => (
+    `<option value="${escAttr(project.id)}">${escHtml(project.label)}</option>`
+  )).join('');
+  if (current && reportProjects.some(p => p.id === current)) select.value = current;
 }
 
 function todayStr() {
@@ -1568,15 +1894,6 @@ function fmtDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleString();
-}
-
-function populateReportProjectOptions() {
-  const select = document.getElementById('report-project');
-  if (!select) return;
-  const reportProjects = getReportProjectDefs();
-  select.innerHTML = reportProjects.map((project, index) => (
-    `<option value="${escAttr(project.id)}"${index === 0 ? ' selected' : ''}>${escHtml(project.label)}</option>`
-  )).join('');
 }
 
 function fmtNum(n) {
@@ -1609,12 +1926,9 @@ function setDefaults() {
 
 function calcTotal() {
   let total = 0;
-  PROJECTS.forEach(p => {
-    const v = parseFloat(document.getElementById(p.id).value) || 0;
-    total += v;
-  });
-  ['p-extra1','p-extra2','p-extra3'].forEach(id => {
-    total += parseFloat(document.getElementById(id).value) || 0;
+  AMOUNT_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) total += parseFloat(el.value) || 0;
   });
   document.getElementById('total-display').textContent = 'UGX ' + fmtNum(total);
   return total;
@@ -1625,8 +1939,15 @@ function clearForm() {
   document.getElementById('f-name').value = '';
   document.getElementById('f-date').value = todayStr();
   document.getElementById('f-email').value = '';
-  PROJECTS.forEach(p => document.getElementById(p.id).value = '');
-  ['p-extra1','p-extra2','p-extra3'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-contact').value = '';
+  document.getElementById('f-fellowship').value = '';
+  AMOUNT_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('p-other-item-label').value = '';
+  document.getElementById('p-custom-item-label').value = '';
+  hideNameSuggestions();
   calcTotal();
   updateEntryFormMode();
   document.getElementById('f-name').focus();
@@ -1669,13 +1990,15 @@ async function loadEntryForEdit(id) {
   document.getElementById('f-date').value = record.date || todayStr();
   document.getElementById('f-treasurer').value = record.treasurer || '';
   document.getElementById('f-email').value = record.email || '';
+  document.getElementById('f-contact').value = record.contact || '';
+  document.getElementById('f-fellowship').value = record.fellowship || '';
 
-  PROJECTS.forEach(p => {
-    document.getElementById(p.id).value = record.projects?.[p.id] || '';
+  AMOUNT_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = record.projects?.[id] || '';
   });
-  ['p-extra1','p-extra2','p-extra3'].forEach(id => {
-    document.getElementById(id).value = record.projects?.[id] || '';
-  });
+  document.getElementById('p-other-item-label').value = record.extraLabels?.['p-other-item'] || '';
+  document.getElementById('p-custom-item-label').value = record.extraLabels?.['p-custom-item'] || '';
 
   calcTotal();
   updateEntryFormMode();
@@ -1690,6 +2013,8 @@ async function saveEntry() {
   const name = document.getElementById('f-name').value.trim();
   const date = document.getElementById('f-date').value;
   const email = document.getElementById('f-email').value.trim();
+  const contact = document.getElementById('f-contact').value.trim();
+  const fellowship = document.getElementById('f-fellowship').value;
   if (!name) { showToast('Please enter a name.', true); document.getElementById('f-name').focus(); return; }
   if (!date) { showToast('Please select a date.', true); return; }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1699,11 +2024,9 @@ async function saveEntry() {
   }
 
   const projects = {};
-  PROJECTS.forEach(p => {
-    projects[p.id] = parseFloat(document.getElementById(p.id).value) || 0;
-  });
-  EXTRA_PROJECTS.forEach(p => {
-    projects[p.id] = parseFloat(document.getElementById(p.id).value) || 0;
+  AMOUNT_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    projects[id] = el ? (parseFloat(el.value) || 0) : 0;
   });
   const total = calcTotal();
 
@@ -1715,6 +2038,8 @@ async function saveEntry() {
     date,
     treasurer: document.getElementById('f-treasurer').value.trim() || '',
     email: email || '',
+    contact: contact || '',
+    fellowship: fellowship || '',
     projects: projects,
     total: total,
     savedAt: prev?.savedAt || new Date().toISOString(),
@@ -1733,11 +2058,12 @@ async function saveEntry() {
       body: record
     });
     if (savedRecord && savedRecord.id) editingEntryId = savedRecord.id;
-    if (email) savePerson(name, email);
+    savePerson(name, { email, contact, fellowship });
     showToast(`✓ Saved: ${name} — UGX ${fmtNum(total)}`);
     clearForm();
     refreshEntryBadge();
     refreshDashboard();
+    refreshPeopleDirectory();
   } catch (e) {
     console.error('Save entry failed', e);
     showToast('Error saving: ' + (e && e.message ? e.message : e), true);
@@ -1786,9 +2112,11 @@ async function refreshDashboard() {
     <tr data-name="${escAttr((r.name||'').toLowerCase())}">
       <td>${r.id}</td>
       <td><strong>${escHtml(r.name)}</strong></td>
+      <td>${escHtml(r.fellowship || '—')}</td>
       <td>${fmtDate(r.date)}</td>
       <td>${escHtml(r.treasurer || '—')}</td>
       <td>${escHtml(r.email || '—')}</td>
+      <td>${escHtml(r.contact || '—')}</td>
       <td><strong>UGX ${fmtNum(r.total)}</strong></td>
       <td>
         <button class="btn-del" title="Edit" onclick="loadEntryForEdit(${r.id})">✎</button>
@@ -1797,7 +2125,7 @@ async function refreshDashboard() {
         <button class="btn-del" title="Delete" onclick="deleteEntry(${r.id})">🗑</button>
       </td>
     </tr>
-  `).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--gray);">No entries yet. Start by adding a new entry.</td></tr>';
+  `).join('') : '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray);">No entries yet. Start by adding a new entry.</td></tr>';
 }
 
 function filterTable(q) {
@@ -1821,19 +2149,11 @@ async function deleteEntry(id) {
 }
 
 function buildReceiptEmail(record) {
-  const extraLabels = record.extraLabels || loadExtraLabels();
   const recipientName = (record.name || '').trim() || 'Nankunda Lilian';
-  const projectLines = PROJECTS
+  const lineItems = getRecordLineItems(record);
+  const projectLines = lineItems
     .map(p => `${p.label}: UGX ${fmtNum(record.projects?.[p.id] || 0)}`)
     .join('\n');
-  const extraLines = EXTRA_PROJECTS
-    .map(({ id, defaultLabel }) => {
-      const label = (extraLabels[id] || '').trim() || defaultLabel;
-      return `${label}: UGX ${fmtNum(record.projects?.[id] || 0)}`;
-    })
-    .join('\n');
-  const extraTotal = EXTRA_PROJECTS.map(item => item.id)
-    .reduce((sum, id) => sum + (record.projects?.[id] || 0), 0);
 
   const body = [
     `Dear ${recipientName},`,
@@ -1847,11 +2167,11 @@ function buildReceiptEmail(record) {
     `Date: ${fmtDate(record.date)}`,
     `Treasurer: ${record.treasurer || '—'}`,
     `Email: ${record.email || '—'}`,
+    `Contact: ${record.contact || '—'}`,
+    `Fellowship: ${record.fellowship || '—'}`,
     '',
     projectLines,
-    extraLines ? ('\n' + extraLines) : '',
     '',
-    `Other items total: UGX ${fmtNum(extraTotal)}`,
     `Grand Total: UGX ${fmtNum(record.total)}`,
     '',
     'Generated by the E-Receipts system.',
@@ -1866,15 +2186,14 @@ function buildReceiptEmail(record) {
       <p style="margin:0 0 10px 0;">Dear ${escHtml(recipientName)},</p>
       <p style="margin:0 0 14px 0;">We acknowledge receipt of your contribution to Makerere SeventhDay Adventist Association.</p>
       <h2>Receipt #${record.id}</h2>
-      <p><strong>Name:</strong> ${record.name}</p>
+      <p><strong>Name:</strong> ${escHtml(record.name)}</p>
       <p><strong>Date:</strong> ${fmtDate(record.date)}</p>
-      <p><strong>Treasurer:</strong> ${record.treasurer || '—'}</p>
+      <p><strong>Treasurer:</strong> ${escHtml(record.treasurer || '—')}</p>
+      <p><strong>Email:</strong> ${escHtml(record.email || '—')}</p>
+      <p><strong>Contact:</strong> ${escHtml(record.contact || '—')}</p>
+      <p><strong>Fellowship:</strong> ${escHtml(record.fellowship || '—')}</p>
       <table style="width:100%;border-collapse:collapse;margin-top:8px;">
-          ${PROJECTS.map(p => `<tr><td style="padding:6px;border-top:1px solid #eee">${p.label}</td><td style="padding:6px;border-top:1px solid #eee;text-align:right">UGX ${fmtNum(record.projects?.[p.id] || 0)}</td></tr>`).join('')}
-          ${EXTRA_PROJECTS.map(({ id, defaultLabel }) => {
-            const lbl = (extraLabels[id] || '').trim() || defaultLabel;
-            return `<tr><td style="padding:6px;border-top:1px solid #eee">${escHtml(lbl)}</td><td style="padding:6px;border-top:1px solid #eee;text-align:right">UGX ${fmtNum(record.projects?.[id] || 0)}</td></tr>`;
-          }).join('')}
+          ${lineItems.map(p => `<tr><td style="padding:6px;border-top:1px solid #eee">${escHtml(p.label)}</td><td style="padding:6px;border-top:1px solid #eee;text-align:right">UGX ${fmtNum(record.projects?.[p.id] || 0)}</td></tr>`).join('')}
           <tr><td style="padding:8px;border-top:2px solid #ddd"><strong>Total</strong></td><td style="padding:8px;border-top:2px solid #ddd;text-align:right"><strong>UGX ${fmtNum(record.total)}</strong></td></tr>
         </table>
       <p style="margin-top:12px;color:#666;font-size:0.9rem;">Generated by the E-Receipts system.</p>
@@ -2000,15 +2319,17 @@ async function sendReceiptEmail(id) {
 // ════════════════════════════════════════
 function toggleDateInputs() {
   const type = document.getElementById('report-type').value;
-  document.getElementById('date-from-group').style.display = type === 'all' ? 'none' : '';
+  document.getElementById('date-from-group').style.display = (type === 'day' || type === 'range') ? '' : 'none';
   document.getElementById('date-to-group').style.display = type === 'range' ? '' : 'none';
   document.getElementById('project-group').style.display = type === 'project' ? '' : 'none';
+  document.getElementById('fellowship-group').style.display = type === 'fellowship' ? '' : 'none';
+  document.getElementById('person-group').style.display = type === 'person' ? '' : 'none';
   if (type === 'day') document.querySelector('#date-from-group label').textContent = 'Date';
   if (type === 'range') document.querySelector('#date-from-group label').textContent = 'From Date';
-  if (type === 'project') document.querySelector('#date-from-group label').textContent = 'Date';
 }
 
 let currentReportData = [];
+let currentReportMeta = {};
 let lastAnalyticsProjTotals = {};
 let analyticsChart = null;
 
@@ -2055,33 +2376,48 @@ async function runReport() {
   const type = document.getElementById('report-type').value;
   const from = document.getElementById('report-date-from').value;
   const to = document.getElementById('report-date-to').value;
-  const reportProjects = getReportProjectDefs();
+  const fellowship = document.getElementById('report-fellowship').value;
+  const personQuery = document.getElementById('report-person').value.trim().toLowerCase();
+
+  const all = await getAllRecords();
+  populateReportProjectOptions(all);
+  const reportProjects = getReportProjectDefs(all);
   const projectId = document.getElementById('report-project').value || reportProjects[0].id;
   const selectedProject = reportProjects.find(p => p.id === projectId) || reportProjects[0];
 
-  const all = await getAllRecords();
   let filtered = all;
 
   if (type === 'day') filtered = all.filter(r => r.date === from);
   else if (type === 'range') filtered = all.filter(r => r.date >= from && r.date <= to);
-  else if (type === 'project') filtered = all.filter(r => (r.projects?.[projectId] || 0) > 0);
+  else if (type === 'fellowship') filtered = all.filter(r => (r.fellowship || '') === fellowship);
+  else if (type === 'project') filtered = all.filter(r => recordMatchesProject(r, selectedProject));
+  else if (type === 'person') {
+    if (!personQuery) {
+      showToast('Enter a person name to search.', true);
+      return;
+    }
+    filtered = all.filter(r => (r.name || '').toLowerCase().includes(personQuery));
+  }
 
   currentReportData = filtered;
+  currentReportMeta = { type, selectedProject, fellowship, personQuery };
 
   document.getElementById('report-output').style.display = filtered.length ? 'block' : 'none';
   document.getElementById('report-empty').style.display = filtered.length ? 'none' : 'block';
-  document.getElementById('project-report-summary').style.display = type === 'project' && filtered.length ? 'block' : 'none';
+  document.getElementById('project-report-summary').style.display = (type === 'project' || type === 'person' || type === 'fellowship') && filtered.length ? 'block' : 'none';
 
   if (!filtered.length) return;
 
   const grandTotal = filtered.reduce((s, r) => s + (r.total || 0), 0);
   const projectTotal = type === 'project'
-    ? filtered.reduce((sum, record) => sum + (record.projects?.[projectId] || 0), 0)
+    ? filtered.reduce((sum, record) => sum + recordProjectAmount(record, selectedProject), 0)
     : 0;
   let metaText = `${filtered.length} record(s)`;
   if (type === 'day') metaText += ` · ${fmtDate(from)}`;
   else if (type === 'range') metaText += ` · ${fmtDate(from)} to ${fmtDate(to)}`;
   else if (type === 'project') metaText += ` · ${selectedProject.label}`;
+  else if (type === 'fellowship') metaText += ` · ${fellowship}`;
+  else if (type === 'person') metaText += ` · ${document.getElementById('report-person').value.trim()}`;
   else metaText += ' · All records';
 
   document.getElementById('report-meta-text').textContent = metaText;
@@ -2089,43 +2425,57 @@ async function runReport() {
   document.getElementById('report-generated-at').textContent = new Date().toLocaleString();
   document.getElementById('print-meta').textContent = metaText + ' · Grand Total: UGX ' + fmtNum(type === 'project' ? projectTotal : grandTotal);
 
+  const summaryTitle = document.getElementById('project-report-title');
+  const summaryMeta = document.getElementById('project-report-meta');
   if (type === 'project') {
-    document.getElementById('project-report-title').textContent = `${selectedProject.label} Project Report`;
-    document.getElementById('project-report-meta').textContent = `Showing entries that include ${selectedProject.label}, with the time each receipt was entered.`;
+    summaryTitle.textContent = `${selectedProject.label} Report`;
+    summaryMeta.textContent = `People who paid for ${selectedProject.label}.`;
     document.getElementById('project-report-total').textContent = 'UGX ' + fmtNum(projectTotal);
+    document.getElementById('project-report-count').textContent = String(filtered.length);
+  } else if (type === 'fellowship') {
+    summaryTitle.textContent = `${fellowship} Fellowship Report`;
+    summaryMeta.textContent = 'All receipts recorded for this fellowship.';
+    document.getElementById('project-report-total').textContent = 'UGX ' + fmtNum(grandTotal);
+    document.getElementById('project-report-count').textContent = String(filtered.length);
+  } else if (type === 'person') {
+    summaryTitle.textContent = `${document.getElementById('report-person').value.trim()} Payment Report`;
+    summaryMeta.textContent = 'Items and projects this person has paid for.';
+    document.getElementById('project-report-total').textContent = 'UGX ' + fmtNum(grandTotal);
     document.getElementById('project-report-count').textContent = String(filtered.length);
   }
 
-  // ── Build project totals ──
-  const projTotals = {};
-  reportProjects.forEach(p => { projTotals[p.id] = 0; });
-  filtered.forEach(r => {
-    reportProjects.forEach(p => {
-      projTotals[p.id] += (r.projects?.[p.id] || 0);
-    });
-  });
-  let projGrand = 0;
-  reportProjects.forEach(p => {
-    const val = projTotals[p.id];
-    projGrand += val;
-    const row = document.getElementById('tot-' + p.id);
-    if (row) {
-      const labelCell = row.querySelector('span:first-child');
-      const cell = row.querySelector('span:last-child');
-      if (labelCell) labelCell.textContent = p.label;
-      if (val > 0) {
-        cell.textContent = fmtNum(val);
-        cell.classList.add('has-value');
-      } else {
-        cell.textContent = '—';
-        cell.classList.remove('has-value');
-      }
-    }
-  });
-  document.getElementById('totals-grand').textContent = 'UGX ' + fmtNum(projGrand);
+  renderTotalsGrid(filtered);
+  renderReportList(filtered, type, selectedProject);
+}
 
+function renderTotalsGrid(filtered) {
+  const defs = getReportProjectDefs(filtered);
+  const totals = {};
+  defs.forEach(p => { totals[p.id] = 0; });
+  filtered.forEach(r => {
+    defs.forEach(p => { totals[p.id] += recordProjectAmount(r, p); });
+  });
+  const rows = defs.map(p => ({ ...p, total: totals[p.id] }));
+  const mid = Math.ceil(rows.length / 2);
+  const cols = [rows.slice(0, mid), rows.slice(mid)];
+  document.getElementById('totals-grid').innerHTML = cols.map(col => `
+    <div class="totals-col">
+      <div class="totals-col-head"><span>Project / Item</span><span>Total (UGX)</span></div>
+      ${col.map(p => `
+        <div class="totals-row">
+          <span>${escHtml(p.label)}</span>
+          <span class="${p.total > 0 ? 'has-value' : ''}">${p.total > 0 ? fmtNum(p.total) : '—'}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+  const projGrand = rows.reduce((s, p) => s + p.total, 0);
+  document.getElementById('totals-grand').textContent = 'UGX ' + fmtNum(projGrand);
+}
+
+function renderReportList(filtered, type, selectedProject) {
   const sorted = [...filtered].sort((a, b) => {
-    if (type === 'project') {
+    if (type === 'project' || type === 'person') {
       const enteredA = (a.savedAt || a.updatedAt || a.date || '').toString();
       const enteredB = (b.savedAt || b.updatedAt || b.date || '').toString();
       return enteredB.localeCompare(enteredA) || a.date.localeCompare(b.date) || a.name.localeCompare(b.name);
@@ -2135,20 +2485,19 @@ async function runReport() {
   const list = document.getElementById('report-list');
 
   list.innerHTML = sorted.map(r => {
-    const extraDefs = getExtraProjectDefs(r.extraLabels || loadExtraLabels());
-    const receiptProjects = [...PROJECTS, ...extraDefs];
+    const receiptProjects = getRecordLineItems(r);
     const leftProjects = receiptProjects.filter(p => p.col === 0);
-    const rightProjects = receiptProjects.filter(p => p.col === 1);
-    const projectFocus = type === 'project' ? (r.projects?.[projectId] || 0) : 0;
+    const rightProjects = receiptProjects.filter(p => p.col !== 0);
+    const projectFocus = type === 'project' ? recordProjectAmount(r, selectedProject) : 0;
 
     const leftRows = leftProjects.map(p => {
       const amt = r.projects?.[p.id] || 0;
-      return `<div class="rp-row"><span>${p.label}</span><span>${amt ? fmtNum(amt) : ''}</span></div>`;
+      return `<div class="rp-row"><span>${escHtml(p.label)}</span><span>${amt ? fmtNum(amt) : ''}</span></div>`;
     }).join('');
 
     const rightRows = rightProjects.map(p => {
       const amt = r.projects?.[p.id] || 0;
-      return `<div class="rp-row"><span>${p.label}</span><span>${amt ? fmtNum(amt) : ''}</span></div>`;
+      return `<div class="rp-row"><span>${escHtml(p.label)}</span><span>${amt ? fmtNum(amt) : ''}</span></div>`;
     }).join('');
 
     return `
@@ -2158,25 +2507,26 @@ async function runReport() {
         <div class="receipt-card-actions">
           <span>Receipt #${r.id} · ${fmtDate(r.date)}</span>
           <button class="btn-inline server" onclick="sendReceiptServer(${r.id})">⇧✉ Send</button>
-        
         </div>
       </div>
       <div class="receipt-inner">
         <div class="receipt-meta">
           <span>Name: <b>${escHtml(r.name)}</b></span>
+          <span>Fellowship: <b>${escHtml(r.fellowship || '—')}</b></span>
           <span>Date: <b>${fmtDate(r.date)}</b></span>
           <span>Entered: <b>${fmtDateTime(r.savedAt || r.updatedAt || r.date)}</b></span>
           <span>Treasurer: <b>${escHtml(r.treasurer || '—')}</b></span>
           <span>Email: <b>${escHtml(r.email || '—')}</b></span>
+          <span>Contact: <b>${escHtml(r.contact || '—')}</b></span>
         </div>
         ${type === 'project' ? `<div class="receipt-total" style="margin-top:10px;">${escHtml(selectedProject.label)}: <strong>UGX ${fmtNum(projectFocus)}</strong></div>` : ''}
         <div class="receipt-projects">
           <div class="rp-col">
-            <div class="rp-header"><span>PROJECT</span><span>AMOUNT</span></div>
+            <div class="rp-header"><span>PROJECT / ITEM</span><span>AMOUNT</span></div>
             ${leftRows}
           </div>
           <div class="rp-col">
-            <div class="rp-header"><span>PROJECT</span><span>AMOUNT</span></div>
+            <div class="rp-header"><span>PROJECT / ITEM</span><span>AMOUNT</span></div>
             ${rightRows}
           </div>
         </div>
@@ -2190,23 +2540,64 @@ async function runReport() {
 // ════════════════════════════════════════
 //  CSV DOWNLOAD
 // ════════════════════════════════════════
+function buildExportRows(records) {
+  const defs = getReportProjectDefs(records);
+  const headers = ['ID', 'Name', 'Email', 'Contact', 'Fellowship', 'Date', 'Entered At', 'Treasurer', ...defs.map(p => p.label), 'Total'];
+  const rows = records.map(r => [
+    r.id,
+    r.name || '',
+    r.email || '',
+    r.contact || '',
+    r.fellowship || '',
+    r.date || '',
+    r.savedAt || r.updatedAt || '',
+    r.treasurer || '',
+    ...defs.map(p => recordProjectAmount(r, p) || 0),
+    r.total || 0
+  ]);
+  return { headers, rows };
+}
+
 function downloadCSV() {
   if (!currentReportData.length) return;
-  const reportProjects = getReportProjectDefs();
-  const headers = ['ID', 'Name', 'Date', 'Entered At', 'Treasurer', ...reportProjects.map(p => p.label), 'Total'];
-  const rows = currentReportData.map(r => [
-    r.id, r.name, r.date, r.savedAt || r.updatedAt || '', r.treasurer || '',
-    ...reportProjects.map(p => r.projects?.[p.id] || 0),
-    r.total
-  ]);
-  const csv = [headers, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const { headers, rows } = buildExportRows(currentReportData);
+  const csv = [headers, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = `makerere_sda_receipts_${todayStr()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function downloadAllExcel() {
+  currentReportData = [];
+  currentReportMeta = { type: 'all' };
+  await downloadExcel();
+}
+
+async function downloadExcel() {
+  let records = currentReportData;
+  if (!records.length) {
+    records = await getAllRecords();
+    currentReportData = records;
+    currentReportMeta = { type: 'all' };
+  }
+  if (!records.length) {
+    showToast('No records to export.', true);
+    return;
+  }
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel library did not load. Try CSV instead.', true);
+    return;
+  }
+  const { headers, rows } = buildExportRows(records);
+  const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Receipts');
+  const type = currentReportMeta.type || 'report';
+  XLSX.writeFile(workbook, `musdaa_${type}_report_${todayStr()}.xlsx`);
 }
 
 function downloadAnalyticsCSV() {
