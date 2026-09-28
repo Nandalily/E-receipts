@@ -1097,6 +1097,7 @@
                     <option value="pa">pa</option>
                     <option value="awo">awo</option>
                     <option value="amo">amo</option>
+                    <option value="lessons">lessons</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -1238,6 +1239,7 @@
               <div><strong>Selected project total:</strong> <span id="project-report-total">UGX 0</span></div>
               <div><strong>Matching entries:</strong> <span id="project-report-count">0</span></div>
             </div>
+            <div id="report-detail-table" style="margin-top:14px;overflow-x:auto;"></div>
           </div>
 
           <!-- PROJECT TOTALS SUMMARY TABLE -->
@@ -1795,7 +1797,7 @@ function getRecordLineItems(record) {
 function getReportProjectDefs(records) {
   const defs = [...PROJECTS];
   const seen = new Set(defs.map(p => p.id));
-  const otherOptions = ['lunch', 'pa', 'awo', 'amo'];
+  const otherOptions = ['lunch', 'pa', 'awo', 'amo', 'lessons'];
   otherOptions.forEach(name => {
     const key = 'other:' + name;
     defs.push({ id: key, label: name, kind: 'other', otherName: name });
@@ -2109,7 +2111,11 @@ async function refreshDashboard() {
   document.getElementById('stat-today-amount').textContent = fmtNum(todayAmt);
 
   const tbody = document.getElementById('recent-tbody');
-  const sorted = [...all].sort((a, b) => b.id - a.id).slice(0, 50);
+  const sorted = [...all].sort((a, b) => {
+    return b.date.localeCompare(a.date)
+      || (b.savedAt || b.updatedAt || '').localeCompare(a.savedAt || a.updatedAt || '')
+      || b.id - a.id;
+  }).slice(0, 50);
   tbody.innerHTML = sorted.length ? sorted.map((r, i) => `
     <tr data-name="${escAttr((r.name||'').toLowerCase())}">
       <td>${r.id}</td>
@@ -2451,8 +2457,45 @@ async function runReport() {
     document.getElementById('project-report-count').textContent = String(filtered.length);
   }
 
+  renderReportDetailTable(filtered, type, selectedProject);
   renderTotalsGrid(filtered);
   renderReportList(filtered, type, selectedProject);
+}
+
+function renderReportDetailTable(records, type, selectedProject) {
+  const container = document.getElementById('report-detail-table');
+  if (!container) return;
+  if (type !== 'person' && type !== 'project') {
+    container.innerHTML = '';
+    return;
+  }
+
+  const rows = [];
+  records.forEach(record => {
+    if (type === 'project') {
+      const amount = recordProjectAmount(record, selectedProject);
+      if (amount > 0) rows.push({ name: record.name, date: record.date, item: selectedProject.label, amount });
+      return;
+    }
+    getRecordLineItems(record).forEach(item => {
+      const amount = record.projects?.[item.id] || 0;
+      if (amount > 0) rows.push({ name: record.name, date: record.date, item: item.label, amount });
+    });
+  });
+
+  rows.sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
+  const headers = type === 'project'
+    ? '<th>Name</th><th>Date paid</th><th>Amount (UGX)</th>'
+    : '<th>Date paid</th><th>Project / item</th><th>Amount (UGX)</th>';
+  const body = rows.map(row => type === 'project'
+    ? `<tr><td>${escHtml(row.name)}</td><td>${fmtDate(row.date)}</td><td><strong>${fmtNum(row.amount)}</strong></td></tr>`
+    : `<tr><td>${fmtDate(row.date)}</td><td>${escHtml(row.item)}</td><td><strong>${fmtNum(row.amount)}</strong></td></tr>`
+  ).join('');
+  container.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>${headers}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
 }
 
 function renderTotalsGrid(filtered) {
@@ -2482,12 +2525,9 @@ function renderTotalsGrid(filtered) {
 
 function renderReportList(filtered, type, selectedProject) {
   const sorted = [...filtered].sort((a, b) => {
-    if (type === 'project' || type === 'person') {
-      const enteredA = (a.savedAt || a.updatedAt || a.date || '').toString();
-      const enteredB = (b.savedAt || b.updatedAt || b.date || '').toString();
-      return enteredB.localeCompare(enteredA) || a.date.localeCompare(b.date) || a.name.localeCompare(b.name);
-    }
-    return a.date.localeCompare(b.date) || a.name.localeCompare(b.name);
+    return b.date.localeCompare(a.date)
+      || (b.savedAt || b.updatedAt || '').localeCompare(a.savedAt || a.updatedAt || '')
+      || a.name.localeCompare(b.name);
   });
   const list = document.getElementById('report-list');
 
