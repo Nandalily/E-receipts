@@ -71,6 +71,45 @@ async function init() {
   `);
   await pool.query('ALTER TABLE receipts ADD COLUMN IF NOT EXISTS contact TEXT');
   await pool.query('ALTER TABLE receipts ADD COLUMN IF NOT EXISTS fellowship TEXT');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS people (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT,
+      contact TEXT,
+      fellowship TEXT,
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS people_name_lower_unique ON people (LOWER(TRIM(name)))');
+  await pool.query(`
+    INSERT INTO people (name, email, contact, fellowship, updated_at)
+    SELECT DISTINCT ON (LOWER(TRIM(name))) name, email, contact, fellowship, COALESCE(updated_at, saved_at, now())
+    FROM receipts
+    WHERE name IS NOT NULL AND TRIM(name) <> ''
+    ORDER BY LOWER(TRIM(name)), id DESC
+    ON CONFLICT DO NOTHING
+  `);
+}
+
+async function upsertPerson(rec) {
+  if (!pool || !rec.name || !String(rec.name).trim()) return;
+  const name = String(rec.name).trim();
+  const email = rec.email || null;
+  const contact = rec.contact || null;
+  const fellowship = rec.fellowship || null;
+  await pool.query(
+    `INSERT INTO people (name, email, contact, fellowship, updated_at)
+     VALUES ($1, $2, $3, $4, now())
+     ON CONFLICT DO NOTHING`,
+    [name, email, contact, fellowship]
+  );
+  await pool.query(
+    `UPDATE people
+     SET name=$1, email=$2, contact=$3, fellowship=$4, updated_at=now()
+     WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))`,
+    [name, email, contact, fellowship]
+  );
 }
 
 async function addReceipt(rec) {
@@ -96,6 +135,7 @@ async function addReceipt(rec) {
       rec.sentAt || null
     ];
     const { rows } = await pool.query(q, vals);
+    await upsertPerson(rec);
     return rowToReceipt(rows[0]);
   } catch (err) {
     if (!isMissingColumnError(err)) throw err;
@@ -116,6 +156,7 @@ async function addReceipt(rec) {
       rec.sentAt || null
     ];
     const { rows } = await pool.query(q, vals);
+    await upsertPerson(rec);
     return rowToReceipt(rows[0]);
   }
 }
@@ -158,6 +199,7 @@ async function updateReceipt(id, rec) {
       id
     ];
     const { rows } = await pool.query(q, vals);
+    await upsertPerson(rec);
     return rowToReceipt(rows[0] || null);
   } catch (err) {
     if (!isMissingColumnError(err)) throw err;
@@ -176,6 +218,7 @@ async function updateReceipt(id, rec) {
       id
     ];
     const { rows } = await pool.query(q, vals);
+    await upsertPerson(rec);
     return rowToReceipt(rows[0] || null);
   }
 }
@@ -201,26 +244,26 @@ async function searchPeople(q) {
   const term = String(q || '').trim();
   if (term.length < 3) return [];
   const { rows } = await pool.query(
-    `SELECT DISTINCT ON (LOWER(TRIM(name))) *
-     FROM receipts
+    `SELECT name, email, contact, fellowship
+     FROM people
      WHERE name ILIKE $1
-     ORDER BY LOWER(TRIM(name)), id DESC
+     ORDER BY LOWER(TRIM(name))
      LIMIT 15`,
     [term + '%']
   );
-  return rows.map(mapPerson);
+  return rows;
 }
 
 async function listPeople() {
   if (!pool) throw new Error('Database not configured');
   const { rows } = await pool.query(
-    `SELECT DISTINCT ON (LOWER(TRIM(name))) *
-     FROM receipts
+    `SELECT name, email, contact, fellowship
+     FROM people
      WHERE name IS NOT NULL AND TRIM(name) <> ''
-     ORDER BY LOWER(TRIM(name)), id DESC
+     ORDER BY LOWER(TRIM(name))
      LIMIT 500`
   );
-  return rows.map(mapPerson);
+  return rows;
 }
 
 module.exports = {
