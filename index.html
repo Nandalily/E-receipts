@@ -522,6 +522,19 @@
   .btn-inline.server { background: #1a7a4a; color: var(--white); }
   .btn-inline.server:hover { background: #155f3b; }
 
+  .analytics-breakdown {
+    margin-top: 18px;
+    overflow-x: auto;
+  }
+  .analytics-breakdown h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  .analytics-breakdown table { min-width: 560px; }
+  .analytics-breakdown td:last-child,
+  .analytics-breakdown th:last-child { text-align: right; }
+
   /* ── REPORTS PAGE ── */
   .report-controls {
     background: var(--white);
@@ -1093,11 +1106,11 @@
                   <label>Other item</label>
                   <select id="p-other-item-label" oninput="saveExtraLabels()">
                     <option value="">Select item</option>
-                    <option value="lunch">lunch</option>
+                    <option value="Lunch">Lunch</option>
                     <option value="pa">pa</option>
                     <option value="awo">awo</option>
                     <option value="amo">amo</option>
-                    <option value="lessons">lessons</option>
+                    <option value="Lesson book">Lesson book</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -1273,6 +1286,7 @@
 
           <div class="table-card" style="padding:18px;">
             <div id="analytics-person-summary" style="margin-bottom:12px;"></div>
+            <div id="analytics-breakdown" class="analytics-breakdown" style="display:none;"></div>
             <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
               <div id="analytics-projects" style="flex:1;min-width:260px;"></div>
               <div style="width:420px;max-width:48%;">
@@ -1777,6 +1791,29 @@ const EXTRA_PROJECTS = [
 
 const AMOUNT_FIELD_IDS = [...PROJECTS.map(p => p.id), 'p-other-item', 'p-custom-item', 'p-extra1', 'p-extra2', 'p-extra3'];
 
+function normalizeOtherItemName(value) {
+  const name = String(value || '').trim();
+  const normalized = name.toLowerCase().replace(/[\s_-]+/g, ' ').replace(/\s+and\s*$/, '').trim();
+  if (['lunch', 'olunch', 'o lunch', 'lunch pledge', 'fellowship lunch pledge', 'recess lunch'].includes(normalized)) {
+    return 'Lunch';
+  }
+  if (/^(?:\d+\s+)?lessons?(?:\s+books?)?$/.test(normalized)) {
+    return 'Lesson book';
+  }
+  if (/^t shirts?$/.test(normalized)) return 'T Shirts';
+  return name;
+}
+
+function aliasAmount(record, canonicalName) {
+  const labels = record.extraLabels || {};
+  const ids = ['p-other-item', 'p-custom-item', 'p-extra1', 'p-extra2', 'p-extra3'];
+  return ids.reduce((sum, id) => {
+    return normalizeOtherItemName(labels[id]).toLowerCase() === canonicalName.toLowerCase()
+      ? sum + (record.projects?.[id] || 0)
+      : sum;
+  }, 0);
+}
+
 function getExtraProjectDefs(labels) {
   return EXTRA_PROJECTS.map(extra => {
     const custom = labels && labels[extra.id] ? String(labels[extra.id]).trim() : '';
@@ -1797,7 +1834,7 @@ function getRecordLineItems(record) {
 function getReportProjectDefs(records) {
   const defs = [...PROJECTS];
   const seen = new Set(defs.map(p => p.id));
-  const otherOptions = ['lunch', 'pa', 'awo', 'amo', 'lessons'];
+  const otherOptions = ['Lunch', 'pa', 'awo', 'amo', 'Lesson book'];
   otherOptions.forEach(name => {
     const key = 'other:' + name;
     defs.push({ id: key, label: name, kind: 'other', otherName: name });
@@ -1806,7 +1843,8 @@ function getReportProjectDefs(records) {
   (records || []).forEach(record => {
     const labels = record.extraLabels || {};
     const customName = String(labels['p-custom-item'] || '').trim();
-    if (customName) {
+    const customCategory = normalizeOtherItemName(customName).toLowerCase();
+    if (customName && !['lunch', 'lesson book', 't shirts'].includes(customCategory)) {
       const key = 'custom:' + customName.toLowerCase();
       if (!seen.has(key)) {
         defs.push({ id: key, label: customName, kind: 'custom', customName });
@@ -1816,7 +1854,8 @@ function getReportProjectDefs(records) {
     ['p-extra1', 'p-extra2', 'p-extra3'].forEach(id => {
       const label = String(labels[id] || '').trim();
       const amount = record.projects?.[id] || 0;
-      if (label && amount > 0) {
+      const category = normalizeOtherItemName(label).toLowerCase();
+      if (label && amount > 0 && !['lunch', 'lesson book', 't shirts'].includes(category)) {
         const key = 'legacy:' + label.toLowerCase();
         if (!seen.has(key)) {
           defs.push({ id: key, label, kind: 'legacy', extraId: id, extraLabel: label });
@@ -1831,19 +1870,25 @@ function getReportProjectDefs(records) {
 function recordMatchesProject(record, def) {
   if (!def) return false;
   if (def.kind === 'other') {
-    const label = String((record.extraLabels || {})['p-other-item'] || '').trim().toLowerCase();
-    return label === def.otherName && (record.projects?.['p-other-item'] || 0) > 0;
+    if (['lunch', 'lesson book'].includes(def.otherName.toLowerCase())) {
+      return aliasAmount(record, def.otherName) > 0;
+    }
+    const label = normalizeOtherItemName((record.extraLabels || {})['p-other-item']);
+    return label.toLowerCase() === def.otherName.toLowerCase() && (record.projects?.['p-other-item'] || 0) > 0;
   }
   if (def.kind === 'custom') {
-    const label = String((record.extraLabels || {})['p-custom-item'] || '').trim().toLowerCase();
-    return label === def.customName.toLowerCase() && (record.projects?.['p-custom-item'] || 0) > 0;
+    const label = normalizeOtherItemName((record.extraLabels || {})['p-custom-item']);
+    return label.toLowerCase() === normalizeOtherItemName(def.customName).toLowerCase() && (record.projects?.['p-custom-item'] || 0) > 0;
   }
   if (def.kind === 'legacy') {
     const labels = record.extraLabels || {};
     return ['p-extra1', 'p-extra2', 'p-extra3'].some(id => {
-      const name = String(labels[id] || '').trim().toLowerCase();
-      return name === def.extraLabel.toLowerCase() && (record.projects?.[id] || 0) > 0;
+      const name = normalizeOtherItemName(labels[id]);
+      return name.toLowerCase() === normalizeOtherItemName(def.extraLabel).toLowerCase() && (record.projects?.[id] || 0) > 0;
     });
+  }
+  if (def.id === 'p-tshirts') {
+    return (record.projects?.[def.id] || 0) + aliasAmount(record, 'T Shirts') > 0;
   }
   return (record.projects?.[def.id] || 0) > 0;
 }
@@ -1851,19 +1896,25 @@ function recordMatchesProject(record, def) {
 function recordProjectAmount(record, def) {
   if (!def) return 0;
   if (def.kind === 'other') {
-    const label = String((record.extraLabels || {})['p-other-item'] || '').trim().toLowerCase();
-    return label === def.otherName ? (record.projects?.['p-other-item'] || 0) : 0;
+    if (['lunch', 'lesson book'].includes(def.otherName.toLowerCase())) {
+      return aliasAmount(record, def.otherName);
+    }
+    const label = normalizeOtherItemName((record.extraLabels || {})['p-other-item']);
+    return label.toLowerCase() === def.otherName.toLowerCase() ? (record.projects?.['p-other-item'] || 0) : 0;
   }
   if (def.kind === 'custom') {
-    const label = String((record.extraLabels || {})['p-custom-item'] || '').trim().toLowerCase();
-    return label === def.customName.toLowerCase() ? (record.projects?.['p-custom-item'] || 0) : 0;
+    const label = normalizeOtherItemName((record.extraLabels || {})['p-custom-item']);
+    return label.toLowerCase() === normalizeOtherItemName(def.customName).toLowerCase() ? (record.projects?.['p-custom-item'] || 0) : 0;
   }
   if (def.kind === 'legacy') {
     const labels = record.extraLabels || {};
     return ['p-extra1', 'p-extra2', 'p-extra3'].reduce((sum, id) => {
-      const name = String(labels[id] || '').trim().toLowerCase();
-      return name === def.extraLabel.toLowerCase() ? sum + (record.projects?.[id] || 0) : sum;
+      const name = normalizeOtherItemName(labels[id]);
+      return name.toLowerCase() === normalizeOtherItemName(def.extraLabel).toLowerCase() ? sum + (record.projects?.[id] || 0) : sum;
     }, 0);
+  }
+  if (def.id === 'p-tshirts') {
+    return (record.projects?.[def.id] || 0) + aliasAmount(record, 'T Shirts');
   }
   return record.projects?.[def.id] || 0;
 }
@@ -2339,6 +2390,7 @@ function toggleDateInputs() {
 let currentReportData = [];
 let currentReportMeta = {};
 let lastAnalyticsProjTotals = {};
+let lastAnalyticsBreakdown = [];
 let analyticsChart = null;
 
 async function runAnalytics() {
@@ -2354,10 +2406,12 @@ async function runAnalytics() {
   const personCount = personRecords.length;
   const personTotal = personRecords.reduce((s, r) => s + (r.total || 0), 0);
 
-  // per-project totals for filtered set
+  const analyticsRecords = person ? personRecords : filtered;
+
+  // Per-project totals follow the selected person when one is provided.
   const projTotals = {};
   PROJECTS.forEach(p => projTotals[p.id] = 0);
-  filtered.forEach(r => {
+  analyticsRecords.forEach(r => {
     PROJECTS.forEach(p => { projTotals[p.id] += (r.projects?.[p.id] || 0); });
   });
 
@@ -2371,6 +2425,46 @@ async function runAnalytics() {
     personDiv.innerHTML = `<div><strong>${person}</strong> · Entries: ${personCount} · Total: UGX ${fmtNum(personTotal)}</div>`;
   } else {
     personDiv.innerHTML = `<div><strong>No person selected</strong> — showing project totals for range</div>`;
+  }
+
+  const breakdown = [];
+  analyticsRecords.forEach(record => {
+    getRecordLineItems(record).forEach(item => {
+      const amount = Number(record.projects?.[item.id] || 0);
+      if (amount > 0) {
+        breakdown.push({
+          date: record.date,
+          item: item.label,
+          amount,
+          receiptId: record.id,
+          receiptTotal: Number(record.total || 0)
+        });
+      }
+    });
+  });
+  breakdown.sort((a, b) => b.date.localeCompare(a.date) || a.item.localeCompare(b.item));
+  lastAnalyticsBreakdown = breakdown;
+
+  const breakdownDiv = document.getElementById('analytics-breakdown');
+  if (person) {
+    const rows = breakdown.map(row => `
+      <tr>
+        <td>${fmtDate(row.date)}</td>
+        <td>${escHtml(row.item)}</td>
+        <td>#${escHtml(row.receiptId)}</td>
+        <td>${fmtNum(row.receiptTotal)}</td>
+        <td><strong>${fmtNum(row.amount)}</strong></td>
+      </tr>`).join('');
+    breakdownDiv.style.display = 'block';
+    breakdownDiv.innerHTML = `
+      <h3>Payment Breakdown</h3>
+      <table>
+        <thead><tr><th>Date paid</th><th>Paid for</th><th>Receipt</th><th>Receipt total (UGX)</th><th>Amount (UGX)</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="5">No itemized payments found.</td></tr>'}</tbody>
+      </table>`;
+  } else {
+    breakdownDiv.style.display = 'none';
+    breakdownDiv.innerHTML = '';
   }
 
   const projDiv = document.getElementById('analytics-projects');
@@ -2651,8 +2745,13 @@ function downloadAnalyticsCSV() {
   const person = document.getElementById('analytics-person').value.trim() || 'all';
   const from = document.getElementById('analytics-from').value || 'start';
   const to = document.getElementById('analytics-to').value || 'end';
-  const headers = ['Project', 'Total (UGX)'];
-  const rows = PROJECTS.map(p => [p.label, lastAnalyticsProjTotals[p.id] || 0]);
+  const personSelected = Boolean(document.getElementById('analytics-person').value.trim());
+  const headers = personSelected
+    ? ['Date paid', 'Paid for', 'Receipt', 'Receipt total (UGX)', 'Amount (UGX)']
+    : ['Project', 'Total (UGX)'];
+  const rows = personSelected
+    ? lastAnalyticsBreakdown.map(row => [row.date, row.item, row.receiptId, row.receiptTotal, row.amount])
+    : PROJECTS.map(p => [p.label, lastAnalyticsProjTotals[p.id] || 0]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
