@@ -182,6 +182,19 @@
   .nav-item:hover { background: rgba(255,255,255,0.07); color: var(--white); }
   .nav-item.active { background: var(--gold); color: var(--white); }
   .nav-item .nav-icon { font-size: 1.1rem; width: 22px; text-align: center; }
+  .follow-up-navigation { background: var(--green); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 22px; }
+  .follow-up-navigation .section-label { color: var(--white); margin-top: 0; }
+  .follow-up-items { display: flex; flex-wrap: wrap; gap: 8px; }
+  .follow-up-category-items { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
+  .follow-up-item { flex: 1 1 130px; justify-content: center; font-size: 0.82rem; padding: 10px 12px; background: rgba(255,255,255,0.1); color: var(--white); margin: 0; }
+  .follow-up-item:hover, .follow-up-item.active { background: var(--gold); color: var(--white); }
+  .follow-up-item.disabled { opacity: 0.45; cursor: not-allowed; }
+  .follow-up-select { width: 100%; margin: 6px 0 0; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.2); border-radius: 7px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); font: inherit; }
+  .follow-up-select option { color: var(--navy); background: var(--white); }
+  .follow-up-table { min-width: 760px; }
+  .follow-up-table input, .follow-up-table select { width: 180px; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 7px; background: var(--cream); color: var(--navy); font: inherit; text-align: right; }
+  .follow-up-table select { text-align: left; }
+  .follow-up-table tfoot { background: var(--navy); color: var(--white); }
   .sidebar-footer {
     margin-top: auto;
     padding: 16px;
@@ -913,6 +926,13 @@
         <span class="nav-icon">R</span>  Reports
       </div>
     </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Follow Up</div>
+      <div class="nav-item" onclick="showPage('followup')" id="nav-followup">
+        <span class="nav-icon">F</span> Follow Up
+      </div>
+    </div>
    
     <br>
     <br>
@@ -1059,6 +1079,8 @@
                   <option value="Nkrucote">Nkrucote</option>
                   <option value="K.K">K.K</option>
                   <option value="Kikoni">Kikoni</option>
+                  <option value="Cedat">Cedat</option>
+                  <option value="Church">Church</option>
                   <option value="Associate">Associate</option>
                   <option value="Visitor">Visitor</option>
                 </select>
@@ -1303,6 +1325,56 @@
           <div class="empty-state">
             <div class="icon"></div>
             <p>No records found for the selected period.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOLLOW UP -->
+    <div class="page" id="page-followup">
+      <div class="page-header">
+        <div>
+          <div class="page-title" id="follow-up-title">Follow Up</div>
+          <div class="page-date">Track given, expected, paid, and remaining amounts</div>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="follow-up-navigation">
+          <div class="section-label">Choose follow-up</div>
+          <div class="follow-up-items">
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'UH-Mitchellex')">UH-Mitchellex</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'Lumbox')">Lumbox</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'Afrostone')">Afrostone</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'Nkrucote')">Nkrucote</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'K.K')">K.K</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'Kikoni')">Kikoni</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'Cedat')">Cedat</div>
+            <div class="nav-item follow-up-item" onclick="openFollowUp('fellowship', 'Church')">Church</div>
+          </div>
+          <div class="follow-up-category-items" id="follow-up-category-items" style="display:none;">
+            <div class="nav-item follow-up-item" onclick="openProjectFollowUp()">Projects</div>
+            <div class="nav-item follow-up-item" onclick="openLunchFollowUp()">Lunch</div>
+            <select class="follow-up-select" aria-label="Outreach follow up" onchange="openOutreachFollowUp(this.value)">
+              <option value="">Outreach</option>
+              <option value="Kayunga">Kayunga</option>
+              <option value="Orientation">Orientation</option>
+              <option value="Youth Summit">Youth Summit</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-card" id="follow-up-table-card" style="display:none;">
+          <div class="table-card-header">
+            <h3 id="follow-up-subtitle">Follow Up</h3>
+            <span class="totals-badge">Expected targets are saved on this device</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="follow-up-table">
+              <thead>
+                <tr><th>Project</th><th>Given</th><th>Expected profit</th><th>Paid</th><th>Remaining</th></tr>
+              </thead>
+              <tbody id="follow-up-body"></tbody>
+              <tfoot><tr><th>Total</th><th id="follow-up-given">UGX 0</th><th id="follow-up-expected">UGX 0</th><th id="follow-up-paid">UGX 0</th><th id="follow-up-remaining">UGX 0</th></tr></tfoot>
+            </table>
           </div>
         </div>
       </div>
@@ -1747,6 +1819,16 @@ function showPage(id) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   document.getElementById('nav-' + id).classList.add('active');
+  if (id === 'followup') {
+    selectedFollowUpFellowship = '';
+    currentFollowUp = { kind: 'fellowship', name: '', projectId: FOLLOW_UP_PROJECTS[0].id, records: [] };
+    document.getElementById('follow-up-title').textContent = 'Follow Up';
+    document.getElementById('follow-up-subtitle').textContent = 'Select a fellowship';
+    document.getElementById('follow-up-table-card').style.display = 'none';
+    updateFollowUpAccess();
+    renderFollowUpTable([]);
+    return;
+  }
   if (id === 'dashboard') refreshDashboard();
   if (id === 'entry') refreshEntryBadge();
   if (id === 'reports') {
@@ -1917,6 +1999,158 @@ function recordProjectAmount(record, def) {
     return (record.projects?.[def.id] || 0) + aliasAmount(record, 'T Shirts');
   }
   return record.projects?.[def.id] || 0;
+}
+
+const FOLLOW_UP_EXPECTED_KEY = 'receipt_follow_up_expected';
+const FOLLOW_UP_FELLOWSHIPS = ['UH-Mitchellex', 'Lumbox', 'Afrostone', 'Nkrucote', 'K.K', 'Kikoni'];
+const FOLLOW_UP_PROJECTS = [
+  { id: 'p-umbrellas', label: 'Umbrellas' },
+  { id: 'p-ties', label: 'Ties' },
+  { id: 'p-notebooks', label: 'Note Books' },
+  { id: 'p-key-holders', label: 'Key Holders' },
+  { id: 'p-bottles', label: 'Bottles' },
+  { id: 'p-liquid-soap', label: 'Liquid Soap' },
+  { id: 'p-pins', label: 'Pins' },
+  { id: 'p-capes', label: 'Capes' },
+  { id: 'p-tshirts', label: 'T Shirts' },
+  { id: 'p-bibles', label: 'Bibles' }
+];
+const FOLLOW_UP_VALUES_KEY = 'receipt_follow_up_values';
+let selectedFollowUpFellowship = '';
+let currentFollowUp = { kind: 'fellowship', name: '', projectId: FOLLOW_UP_PROJECTS[0].id };
+
+function getFollowUpExpected() {
+  try {
+    return JSON.parse(localStorage.getItem(FOLLOW_UP_EXPECTED_KEY) || '{}');
+  } catch (error) {
+    return {};
+  }
+}
+
+function getFollowUpValues() {
+  try {
+    return JSON.parse(localStorage.getItem(FOLLOW_UP_VALUES_KEY) || '{}');
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveFollowUpField(field, value) {
+  const values = getFollowUpValues();
+  const key = `${currentFollowUp.kind}:${currentFollowUp.name}:${currentFollowUp.projectId}`;
+  values[key] = values[key] || {};
+  values[key][field] = Math.max(0, Number(value) || 0);
+  localStorage.setItem(FOLLOW_UP_VALUES_KEY, JSON.stringify(values));
+  renderFollowUpTable(currentFollowUp.records || []);
+}
+
+function setFollowUpProject(projectId) {
+  currentFollowUp.projectId = projectId;
+  renderFollowUpTable(currentFollowUp.records || []);
+}
+
+function updateFollowUpAccess() {
+  const categoryNav = document.getElementById('follow-up-category-items');
+  if (categoryNav) categoryNav.style.display = selectedFollowUpFellowship ? 'flex' : 'none';
+}
+
+function renderFollowUpTable(records) {
+  if (!selectedFollowUpFellowship) {
+    document.getElementById('follow-up-body').innerHTML = '<tr><td colspan="5">Select a fellowship above to view follow-up.</td></tr>';
+    ['given', 'expected', 'paid', 'remaining'].forEach(id => {
+      document.getElementById('follow-up-' + id).textContent = 'UGX 0';
+    });
+    return;
+  }
+  const values = getFollowUpValues();
+  const key = `${currentFollowUp.kind}:${currentFollowUp.name}:${currentFollowUp.projectId}`;
+  const saved = values[key] || {};
+  const outreachProjects = [
+    { id: 'p-kayunga', label: 'Kayunga' },
+    { id: 'p-orientation', label: 'Orientation' },
+    { id: 'p-youth-summit', label: 'Youth Summit' }
+  ];
+  const projectOptions = currentFollowUp.kind === 'outreach' ? outreachProjects : FOLLOW_UP_PROJECTS;
+  const project = projectOptions.find(item => item.id === currentFollowUp.projectId) || projectOptions[0];
+  const projectDef = PROJECTS.find(item => item.id === project.id);
+  const paid = currentFollowUp.kind === 'lunch'
+    ? records.reduce((sum, record) => sum + aliasAmount(record, 'Lunch'), 0)
+    : records.reduce((sum, record) => sum + (projectDef ? recordProjectAmount(record, projectDef) : 0), 0);
+  const given = Number(saved.given || 0);
+  const expectedProfit = Number(saved.expectedProfit || 0);
+  const remaining = given + expectedProfit - paid;
+  document.getElementById('follow-up-body').innerHTML = `<tr>
+    <td><select id="follow-up-project" onchange="setFollowUpProject(this.value)">
+      ${projectOptions.map(item => `<option value="${item.id}"${item.id === project.id ? ' selected' : ''}>${item.label}</option>`).join('')}
+    </select></td>
+    <td><input type="number" min="0" value="${given || ''}" onchange="saveFollowUpField('given', this.value)" placeholder="0"></td>
+    <td><input type="number" min="0" value="${expectedProfit || ''}" onchange="saveFollowUpField('expectedProfit', this.value)" placeholder="0"></td>
+    <td>UGX ${fmtNum(paid)}</td>
+    <td class="${remaining < 0 ? 'has-value' : ''}">UGX ${fmtNum(remaining)}</td>
+  </tr>`;
+  document.getElementById('follow-up-given').textContent = 'UGX ' + fmtNum(given);
+  document.getElementById('follow-up-expected').textContent = 'UGX ' + fmtNum(expectedProfit);
+  document.getElementById('follow-up-paid').textContent = 'UGX ' + fmtNum(paid);
+  document.getElementById('follow-up-remaining').textContent = 'UGX ' + fmtNum(remaining);
+}
+
+async function openFollowUp(kind, name) {
+  if (!name) return;
+  if (kind === 'fellowship') {
+    selectedFollowUpFellowship = name;
+    currentFollowUp = { kind, name, projectId: FOLLOW_UP_PROJECTS[0].id, records: [] };
+    document.getElementById('nav-followup')?.classList.add('active');
+    document.getElementById('page-followup').classList.add('active');
+    document.getElementById('follow-up-title').textContent = `${name} Follow Up`;
+    document.getElementById('follow-up-subtitle').textContent = 'Choose Projects, Lunch, or Outreach';
+    document.getElementById('follow-up-table-card').style.display = 'none';
+    updateFollowUpAccess();
+    return;
+  }
+  if (kind === 'lunch' && !selectedFollowUpFellowship) return;
+  const displayName = kind === 'project' ? selectedFollowUpFellowship : name;
+  const outreachProjectIds = { Kayunga: 'p-kayunga', Orientation: 'p-orientation', 'Youth Summit': 'p-youth-summit' };
+  const projectId = kind === 'outreach' ? outreachProjectIds[name] : FOLLOW_UP_PROJECTS[0].id;
+  currentFollowUp = { kind, name: displayName, projectId, records: [] };
+  document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  document.getElementById('nav-followup')?.classList.add('active');
+  document.getElementById('page-followup').classList.add('active');
+  document.getElementById('follow-up-title').textContent = `${displayName} Follow Up`;
+  document.getElementById('follow-up-subtitle').textContent = kind === 'project' ? `${displayName} Projects` : `${displayName} ${name}`;
+  document.getElementById('follow-up-table-card').style.display = '';
+  updateFollowUpAccess();
+  try {
+    const records = await getAllRecords();
+    currentFollowUp.records = records.filter(record => {
+      const fellowship = String(record.fellowship || record.extraLabels?.fellowship || '').trim().toLowerCase();
+      if (kind === 'project') return fellowship === selectedFollowUpFellowship.toLowerCase();
+      if (kind === 'lunch') return fellowship === selectedFollowUpFellowship.toLowerCase();
+      return true;
+    });
+    renderFollowUpTable(currentFollowUp.records);
+  } catch (error) {
+    showToast('Could not load follow-up records.', true);
+    renderFollowUpTable([]);
+  }
+}
+
+function openProjectFollowUp() {
+  if (!selectedFollowUpFellowship) return;
+  openFollowUp('project', selectedFollowUpFellowship);
+}
+
+function openLunchFollowUp() {
+  if (!selectedFollowUpFellowship) {
+    showToast('Select a fellowship before opening Lunch follow-up.', true);
+    return;
+  }
+  openFollowUp('lunch', 'Lunch');
+}
+
+function openOutreachFollowUp(projectName) {
+  if (!selectedFollowUpFellowship || !projectName) return;
+  openFollowUp('outreach', projectName);
 }
 
 function populateReportProjectOptions(records) {
