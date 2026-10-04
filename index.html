@@ -2802,22 +2802,34 @@ function renderReportDetailTable(records, type, selectedProject) {
   records.forEach(record => {
     if (type === 'project') {
       const amount = recordProjectAmount(record, selectedProject);
-      if (amount > 0) rows.push({ name: record.name, date: record.date, item: selectedProject.label, amount });
+      if (amount > 0) rows.push({
+        name: record.name,
+        fellowship: record.fellowship || record.extraLabels?.fellowship || '',
+        date: record.date,
+        item: selectedProject.label,
+        amount
+      });
       return;
     }
     getRecordLineItems(record).forEach(item => {
       const amount = record.projects?.[item.id] || 0;
-      if (amount > 0) rows.push({ name: record.name, date: record.date, item: item.label, amount });
+      if (amount > 0) rows.push({
+        name: record.name,
+        fellowship: record.fellowship || record.extraLabels?.fellowship || '',
+        date: record.date,
+        item: item.label,
+        amount
+      });
     });
   });
 
   rows.sort((a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name));
   const headers = type === 'project'
-    ? '<th>Name</th><th>Date paid</th><th>Amount (UGX)</th>'
-    : '<th>Date paid</th><th>Project / item</th><th>Amount (UGX)</th>';
+    ? '<th>Name</th><th>Fellowship</th><th>Date paid</th><th>Amount (UGX)</th>'
+    : '<th>Date paid</th><th>Project / item</th><th>Fellowship</th><th>Amount (UGX)</th>';
   const body = rows.map(row => type === 'project'
-    ? `<tr><td>${escHtml(row.name)}</td><td>${fmtDate(row.date)}</td><td><strong>${fmtNum(row.amount)}</strong></td></tr>`
-    : `<tr><td>${fmtDate(row.date)}</td><td>${escHtml(row.item)}</td><td><strong>${fmtNum(row.amount)}</strong></td></tr>`
+    ? `<tr><td>${escHtml(row.name)}</td><td>${escHtml(row.fellowship || '—')}</td><td>${fmtDate(row.date)}</td><td><strong>${fmtNum(row.amount)}</strong></td></tr>`
+    : `<tr><td>${fmtDate(row.date)}</td><td>${escHtml(row.item)}</td><td>${escHtml(row.fellowship || '—')}</td><td><strong>${fmtNum(row.amount)}</strong></td></tr>`
   ).join('');
   container.innerHTML = `
     <table style="width:100%;border-collapse:collapse;">
