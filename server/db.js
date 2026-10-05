@@ -248,8 +248,8 @@ async function searchPeople(q) {
      FROM people
      WHERE name ILIKE $1
      ORDER BY LOWER(TRIM(name))
-     LIMIT 15`,
-    [term + '%']
+     LIMIT 50`,
+    ['%' + term + '%']
   );
   return rows;
 }
@@ -261,7 +261,7 @@ async function listPeople() {
      FROM people
      WHERE name IS NOT NULL AND TRIM(name) <> ''
      ORDER BY LOWER(TRIM(name))
-     LIMIT 500`
+     LIMIT 1000`
   );
   return rows;
 }

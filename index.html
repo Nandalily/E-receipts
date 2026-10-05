@@ -1070,8 +1070,8 @@
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Fellowship</label>
-                <select id="f-fellowship">
+                <label>Fellowship *</label>
+                <select id="f-fellowship" required>
                   <option value="">Select fellowship</option>
                   <option value="UH-Mitchellex">UH-Mitchellex</option>
                   <option value="Lumbox">Lumbox</option>
@@ -1083,6 +1083,7 @@
                   <option value="Church">Church</option>
                   <option value="Associate">Associate</option>
                   <option value="Visitor">Visitor</option>
+                  <option value="Elder /Pr.">Elder /Pr.</option>
                 </select>
               </div>
               <div class="form-group">
@@ -1433,6 +1434,7 @@ const USERS = {
 
 let currentUser = null;
 let editingEntryId = null;
+let dashboardRecords = [];
 const EMAIL_SETTINGS_KEY = 'receipt_email_delivery_settings';
 const SERVER_API_BASE_KEY = 'receipt_server_api_base_url';
 const PERSONS_KEY = 'receipt_persons';
@@ -1567,7 +1569,7 @@ async function lookupPeople(prefix) {
   } catch (error) {
     const local = loadPersons();
     const matches = Object.keys(local)
-      .filter(name => name.toLowerCase().startsWith(prefix.toLowerCase()))
+      .filter(name => name.toLowerCase().includes(prefix.toLowerCase()))
       .map(name => ({ name, ...getPersonByName(name) }));
     renderNameSuggestions(matches);
     return matches;
@@ -2302,6 +2304,11 @@ async function saveEntry() {
   const fellowship = document.getElementById('f-fellowship').value;
   if (!name) { showToast('Please enter a name.', true); document.getElementById('f-name').focus(); return; }
   if (!date) { showToast('Please select a date.', true); return; }
+  if (!fellowship) {
+    showToast('Please select a fellowship.', true);
+    document.getElementById('f-fellowship').focus();
+    return;
+  }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     showToast('Please enter a valid email address.', true);
     document.getElementById('f-email').focus();
@@ -2385,6 +2392,7 @@ async function getAllRecords() {
 // ════════════════════════════════════════
 async function refreshDashboard() {
   const all = await getAllRecords();
+  dashboardRecords = all;
   const today = todayStr();
   const todayRec = all.filter(r => r.date === today);
   const totalAmt = all.reduce((s, r) => s + (r.total || 0), 0);
@@ -2395,13 +2403,22 @@ async function refreshDashboard() {
   document.getElementById('stat-amount').textContent = fmtNum(totalAmt);
   document.getElementById('stat-today-amount').textContent = fmtNum(todayAmt);
 
+  renderDashboardRows('');
+}
+
+function renderDashboardRows(query) {
   const tbody = document.getElementById('recent-tbody');
-  const sorted = [...all].sort((a, b) => {
-    return b.date.localeCompare(a.date)
-      || (b.savedAt || b.updatedAt || '').localeCompare(a.savedAt || a.updatedAt || '')
-      || b.id - a.id;
-  }).slice(0, 50);
-  tbody.innerHTML = sorted.length ? sorted.map((r, i) => `
+  if (!tbody) return;
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  const sorted = [...dashboardRecords]
+    .filter(r => !normalizedQuery || (r.name || '').toLowerCase().includes(normalizedQuery))
+    .sort((a, b) => {
+      return b.date.localeCompare(a.date)
+        || (b.savedAt || b.updatedAt || '').localeCompare(a.savedAt || a.updatedAt || '')
+        || b.id - a.id;
+    });
+  const visible = normalizedQuery ? sorted : sorted.slice(0, 50);
+  tbody.innerHTML = visible.length ? visible.map((r, i) => `
     <tr data-name="${escAttr((r.name||'').toLowerCase())}">
       <td>${r.id}</td>
       <td><strong>${escHtml(r.name)}</strong></td>
@@ -2418,14 +2435,11 @@ async function refreshDashboard() {
         <button class="btn-del" title="Delete" onclick="deleteEntry(${r.id})">🗑</button>
       </td>
     </tr>
-  `).join('') : '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray);">No entries yet. Start by adding a new entry.</td></tr>';
+  `).join('') : `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray);">${normalizedQuery ? 'No matching person found.' : 'No entries yet. Start by adding a new entry.'}</td></tr>`;
 }
 
 function filterTable(q) {
-  document.querySelectorAll('#recent-tbody tr').forEach(row => {
-    const name = row.dataset.name || '';
-    row.style.display = name.includes(q.toLowerCase()) ? '' : 'none';
-  });
+  renderDashboardRows(q);
 }
 
 async function deleteEntry(id) {
